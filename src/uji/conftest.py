@@ -43,41 +43,46 @@ def profil_browser(request, konfigurasi):
 
 @pytest.fixture(scope="session")
 def browser(konfigurasi, profil_browser):
-    # Satu browser dipakai bersama seluruh skenario unggah.
-    driver = buat_driver(konfigurasi, profil_browser)
-    yield driver
-    tutup_driver(driver)
-
-
-@pytest.fixture(scope="module")
-def browser_login(konfigurasi, profil_browser):
-    # Browser terpisah supaya uji login tidak mengganggu sesi uji lain.
+    # Satu browser dipakai bersama seluruh skenario, jadi captcha cukup dicentang sekali.
     driver = buat_driver(konfigurasi, profil_browser)
     yield driver
     tutup_driver(driver)
 
 
 @pytest.fixture(scope="session")
-def sesi_mahasiswa(browser, konfigurasi):
+def berkas_sesi(konfigurasi):
+    # Sesi login disimpan per browser supaya skenario berikutnya tidak perlu captcha.
+    return konfigurasi.folder_hasil / f"sesi_{os.environ.get('BROWSER_UJI', 'chrome')}.json"
+
+
+@pytest.fixture(scope="session")
+def sesi_mahasiswa(browser, konfigurasi, berkas_sesi):
     # Login cukup sekali untuk semua skenario unggah.
     log = logging.getLogger("uji")
-    manual = ambil_benar("LOGIN_MANUAL", False)
+    halaman = HalamanLogin(browser, konfigurasi)
 
-    halaman = HalamanLogin(browser, konfigurasi).buka()
-    if manual:
+    if ambil_benar("LOGIN_MANUAL", False):
+        halaman.buka()
         if not halaman.tunggu_login_manual():
             pytest.skip("Login manual tidak selesai dalam batas waktu.")
+        halaman.simpan_sesi(berkas_sesi)
         return None
 
     if not konfigurasi.punya_kredensial:
         pytest.skip("Kredensial akun mahasiswa belum diisi (SUNAN_PENGGUNA dan SUNAN_SANDI).")
 
-    halaman.isi_kredensial(konfigurasi.pengguna, konfigurasi.sandi)
-    if not halaman.tunggu_captcha():
-        pytest.skip("reCAPTCHA belum diisi. Jalankan ulang dengan --headed lalu lengkapi CAPTCHA.")
-    halaman.kirim()
-    hasil = halaman.cek_hasil()
+    if halaman.sudah_masuk():
+        # Sesi dari test case login sebelumnya masih hidup, dipakai lagi.
+        return None
+
+    if halaman.pulihkan_sesi(berkas_sesi) and halaman.sudah_masuk():
+        log.info("Sesi login dipakai ulang, captcha tidak perlu dicentang lagi.")
+        return None
+
+    halaman.buka()
+    hasil = halaman.coba_login(konfigurasi.pengguna, konfigurasi.sandi)
     if not hasil.berhasil:
         pytest.skip(f"Login gagal, skenario tidak bisa dijalankan: {hasil.pesan or hasil.alasan}")
+    halaman.simpan_sesi(berkas_sesi)
     log.info("Sesi mahasiswa siap dipakai untuk uji unggah berkas.")
     return hasil
