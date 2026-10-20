@@ -1,10 +1,16 @@
 *.docx
-hasil/
-__pycache__/
-.pytest_cache/
-*.pyc
 .env
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Folder hasil pengujian tetap ada di repo, isinya yang diabaikan
+hasil/*
+!hasil/.gitkeep
+
+# Berkas uji dibuat otomatis oleh main.py
 berkas/*.pdf
 berkas/*.bin
 berkas/*.exe
-berkas/duplikat/
+berkas/duplikat/satu/*.pdf
+berkas/duplikat/dua/*.pdf

@@ -154,17 +154,17 @@ Otomasi lebih cepat, konsisten pada setiap eksekusi, dan cocok untuk pengujian r
 
 ### 5.2 Alat yang Digunakan
 
-Python, Selenium WebDriver (mengendalikan browser Chrome), dan pytest sebagai kerangka penjalan test serta pelapor hasil.
+Python, Selenium WebDriver, dan pytest sebagai kerangka penjalan test serta pelapor hasil. Otomasi dijalankan pada tiga browser: Chrome (termasuk Chromium dan Brave), Firefox, dan Microsoft Edge. Setiap browser memakai web driver sendiri, yaitu chromedriver, geckodriver, dan msedgedriver.
 
 Struktur proyek otomasi:
 
 ```
 main.py              titik eksekusi seluruh pengujian
 berkas/              berkas uji (PDF valid, batas ukuran, berkas kosong, berkas terlarang)
-hasil/               log, tangkapan layar, dan laporan hasil
+hasil/               log, tangkapan layar, dan laporan per browser
 src/
-  konfigurasi.py     pembacaan berkas .env
-  browser.py         pembuatan driver browser
+  konfigurasi.py     pembacaan berkas .env dan daftar browser
+  browser.py         pembuatan driver tiap browser
   data_uji.py        pembuat berkas uji
   pelapor.py         log, tangkapan layar, dan laporan
   halaman/           locator dan alur tiap halaman (login, tugas)
@@ -182,9 +182,13 @@ src/
 | — | `TC-TGS-06` | Penanganan dialog nama berkas sama bergantung pada *file picker* sistem |
 | — | `TC-AKS-01` | Penilaian tampilan daftar nilai bersifat manual |
 
+Skenario otomatis dapat dijalankan berulang pada Chrome, Firefox, dan Edge. Pengulangan ini sekaligus menjadi bukti pengujian kompatibilitas pada §4.3, dan setiap browser menghasilkan laporan terpisah pada folder `hasil/`.
+
 ### 5.4 Keterbatasan Otomatisasi
 
 Otomasi terhambat bila halaman memakai CAPTCHA, dan skrip mudah rusak ketika locator elemen berubah akibat pembaruan tampilan. Otomasi juga tidak menilai tampilan secara subjektif (misalnya kejelasan pesan galat) dan sulit meniru gangguan fisik seperti Wi-Fi yang diputus, sehingga skenario tersebut tetap diuji manual.
+
+Pada halaman login Sunan UMK terdapat reCAPTCHA Enterprise dengan centang "bukan robot". Centang tersebut hanya dapat dicentang manusia, sehingga skenario dijalankan dalam mode headed: operator mencocokkan centang di jendela browser, lalu skenario otomatis melanjutkan setelah respons terisi. Bila centang tidak dicentang dalam batas waktu, skenario ditandai terhalang (dilewati), bukan gagal.
 
 ---
 

@@ -7,9 +7,12 @@ import logging
 import pytest
 
 from src.browser import buat_driver, tutup_driver
+from src.browser import profil_browser as buat_profil
 from src.data_uji import siapkan_berkas
 from src.halaman.login import HalamanLogin
-from src.konfigurasi import bangun_konfigurasi
+from src.konfigurasi import bangun_konfigurasi, browser_terpilih
+
+BROWSER_UJI = browser_terpilih()
 
 
 @pytest.fixture(scope="session")
@@ -22,10 +25,24 @@ def berkas(konfigurasi):
     return siapkan_berkas(konfigurasi.folder_berkas, konfigurasi.batas_unggah_mb)
 
 
+@pytest.fixture(scope="session", params=BROWSER_UJI, ids=lambda nama: nama)
+def profil_browser(request, konfigurasi):
+    """Satu profil per browser yang diuji; dipakai untuk mengulang skenario di tiap browser."""
+    return buat_profil(request.param, konfigurasi)
+
+
 @pytest.fixture(scope="session")
-def browser(konfigurasi):
+def browser(konfigurasi, profil_browser):
     """Browser khusus skenario unggah berkas; dipakai sekali se-sesi."""
-    driver = buat_driver(konfigurasi)
+    driver = buat_driver(konfigurasi, profil_browser)
+    yield driver
+    tutup_driver(driver)
+
+
+@pytest.fixture(scope="module")
+def browser_login(konfigurasi, profil_browser):
+    """Browser tersendiri supaya uji login tidak mengganggu sesi uji lain."""
+    driver = buat_driver(konfigurasi, profil_browser)
     yield driver
     tutup_driver(driver)
 

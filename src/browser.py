@@ -1,52 +1,98 @@
-"""Pembuatan driver browser untuk pengujian otomatis."""
+"""Pembuatan driver browser: Chrome/Chromium/Brave, Firefox, dan Edge."""
 
 from __future__ import annotations
 
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options as OpsiChrome
+from selenium.webdriver.chrome.service import Service as LayananChrome
+from selenium.webdriver.edge.options import Options as OpsiEdge
+from selenium.webdriver.edge.service import Service as LayananEdge
+from selenium.webdriver.firefox.options import Options as OpsiFirefox
+from selenium.webdriver.firefox.service import Service as LayananFirefox
 
 from .konfigurasi import Konfigurasi, ambil_benar
 
-NAMA_BINER = ("google-chrome", "chromium", "chromium-browser", "brave", "brave-browser")
-TEMPAT_DRIVER = (
-    Path.home() / ".cache/selenium/chromedriver/linux64/chromedriver",
-    Path("/usr/bin/chromedriver"),
-)
+NAMA_BINER = {
+    "chrome": ("google-chrome", "chromium", "chromium-browser", "brave", "brave-browser"),
+    "firefox": ("firefox", "firefox-esr"),
+    "edge": ("microsoft-edge", "microsoft-edge-stable", "msedge"),
+}
+TEMPAT_BINER = {
+    "chrome": (
+        Path("/opt/brave-origin-bin/brave"),
+        Path("C:/Program Files/Google/Chrome/Application/chrome.exe"),
+        Path("C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"),
+    ),
+    "firefox": (
+        Path.home() / ".local/opt/firefox/firefox",
+        Path("C:/Program Files/Mozilla Firefox/firefox.exe"),
+        Path("C:/Program Files (x86)/Mozilla Firefox/firefox.exe"),
+    ),
+    "edge": (
+        Path.home() / ".local/opt/microsoft-edge/msedge",
+        Path("/opt/microsoft-edge/msedge"),
+        Path("C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"),
+        Path("C:/Program Files/Microsoft/Edge/Application/msedge.exe"),
+    ),
+}
+TEMPAT_DRIVER = {
+    "chrome": (
+        Path.home() / ".cache/selenium/chromedriver/linux64/chromedriver",
+        Path.home() / ".cache/selenium/chromedriver/win64/chromedriver.exe",
+        Path("/usr/bin/chromedriver"),
+    ),
+    "firefox": (
+        Path.home() / ".cache/selenium/geckodriver",
+        Path.home() / ".cache/selenium/geckodriver.exe",
+        Path("/usr/bin/geckodriver"),
+    ),
+    "edge": (
+        Path.home() / ".cache/selenium/msedgedriver",
+        Path.home() / ".cache/selenium/msedgedriver.exe",
+        Path("/usr/bin/msedgedriver"),
+    ),
+}
 
 
-def cari_biner(konf: Konfigurasi) -> str | None:
-    if konf.biner_peramban:
-        return konf.biner_peramban
-    for nama in NAMA_BINER:
-        ditemukan = shutil.which(nama)
+@dataclass(frozen=True)
+class ProfilBrowser:
+    nama: str
+    biner: str | None
+    driver: str | None
+
+
+def cari_biner(nama: str, konf: Konfigurasi) -> str | None:
+    """Lokasi browser: dari .env, lalu dari PATH, lalu dari lokasi umum."""
+    dari_env = konf.biner.get(nama, "")
+    if dari_env:
+        return dari_env
+    for nama_biner in NAMA_BINER[nama]:
+        ditemukan = shutil.which(nama_biner)
         if ditemukan:
             return ditemukan
-    return None
-
-
-def cari_driver(konf: Konfigurasi) -> str | None:
-    if konf.driver_biner:
-        return konf.driver_biner
-    for kandidat in TEMPAT_DRIVER:
+    for kandidat in TEMPAT_BINER[nama]:
         if kandidat.exists():
             return str(kandidat)
     return None
 
 
-def buat_driver(konf: Konfigurasi) -> webdriver.Chrome:
-    """Buka browser Chrome (atau Brave/Chromium) dengan driver yang tersedia."""
-    if konf.peramban not in {"chrome", "chromium", "brave"}:
-        raise ValueError(
-            f"Peramban '{konf.peramban}' belum didukung untuk otomasi. "
-            "Pengujian otomatis memakai Chrome, Chromium, atau Brave."
-        )
+def cari_driver(nama: str, konf: Konfigurasi) -> str | None:
+    """Lokasi web driver: dari .env, lalu lokasi umum, lalu Selenium Manager."""
+    dari_env = konf.driver.get(nama, "")
+    if dari_env:
+        return dari_env
+    for kandidat in TEMPAT_DRIVER[nama]:
+        if kandidat.exists():
+            return str(kandidat)
+    return None
 
-    opsi = Options()
-    biner = cari_biner(konf)
+
+def _opsi_chrome(konf: Konfigurasi, biner: str | None) -> OpsiChrome:
+    opsi = OpsiChrome()
     if biner:
         opsi.binary_location = biner
     if konf.headless:
@@ -58,13 +104,60 @@ def buat_driver(konf: Konfigurasi) -> webdriver.Chrome:
     opsi.add_argument("--disable-dev-shm-usage")
     opsi.add_argument("--window-size=1366,768")
     opsi.add_argument("--lang=id-ID")
-
-    driver_biner = cari_driver(konf)
-    layanan = Service(driver_biner) if driver_biner else Service()
-    return webdriver.Chrome(service=layanan, options=opsi)
+    return opsi
 
 
-def tutup_driver(driver: webdriver.Chrome) -> None:
+def _opsi_firefox(konf: Konfigurasi, biner: str | None) -> OpsiFirefox:
+    opsi = OpsiFirefox()
+    if biner:
+        opsi.binary_location = biner
+    if konf.headless:
+        opsi.add_argument("--headless")
+    opsi.add_argument("--width=1366")
+    opsi.add_argument("--height=768")
+    opsi.set_preference("intl.accept_languages", "id-ID,id")
+    opsi.set_preference("browser.download.folderList", 2)
+    opsi.set_preference("browser.download.dir", str(konf.folder_hasil))
+    return opsi
+
+
+def _opsi_edge(konf: Konfigurasi, biner: str | None) -> OpsiEdge:
+    opsi = OpsiEdge()
+    if biner:
+        opsi.binary_location = biner
+    if konf.headless:
+        opsi.add_argument("--headless=new")
+    if ambil_benar("NO_SANDBOX", False):
+        opsi.add_argument("--no-sandbox")
+    opsi.add_argument("--no-first-run")
+    opsi.add_argument("--disable-dev-shm-usage")
+    opsi.add_argument("--window-size=1366,768")
+    opsi.add_argument("--lang=id-ID")
+    return opsi
+
+
+def buat_driver(konf: Konfigurasi, profil: ProfilBrowser) -> webdriver.RemoteWebDriver:
+    """Buka browser sesuai profil; driver diambil dari lokasi yang tersedia."""
+    if profil.nama == "firefox":
+        layanan = LayananFirefox(profil.driver) if profil.driver else LayananFirefox()
+        return webdriver.Firefox(service=layanan, options=_opsi_firefox(konf, profil.biner))
+    if profil.nama == "edge":
+        layanan = LayananEdge(profil.driver) if profil.driver else LayananEdge()
+        return webdriver.Edge(service=layanan, options=_opsi_edge(konf, profil.biner))
+
+    layanan = LayananChrome(profil.driver) if profil.driver else LayananChrome()
+    return webdriver.Chrome(service=layanan, options=_opsi_chrome(konf, profil.biner))
+
+
+def profil_browser(nama: str, konf: Konfigurasi) -> ProfilBrowser:
+    return ProfilBrowser(
+        nama=nama,
+        biner=cari_biner(nama, konf),
+        driver=cari_driver(nama, konf),
+    )
+
+
+def tutup_driver(driver) -> None:
     try:
         driver.quit()
     except Exception:

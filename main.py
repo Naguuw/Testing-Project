@@ -1,8 +1,9 @@
 """Titik eksekusi pengujian otomatis website e-learning Sunan UMK.
 
 Jalankan:
-    python main.py                 semua test case otomatis
+    python main.py                 semua test case otomatis di semua browser
     python main.py --headed        tampilkan browser (perlu bila ada CAPTCHA)
+    python main.py --browser chrome,firefox
     python main.py --pilih TC-LGN-01,TC-TGS-01
     python main.py --panduan       tampilkan skenario uji manual
     python main.py --daftar        tampilkan daftar test case
@@ -12,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,8 +21,7 @@ AKAR = Path(__file__).resolve().parent
 if str(AKAR) not in sys.path:
     sys.path.insert(0, str(AKAR))
 
-import pytest
-
+from src.browser import cari_biner
 from src.data_uji import siapkan_berkas
 from src.konfigurasi import bangun_konfigurasi
 from src.pelapor import siapkan_log, tulis_laporan
@@ -46,6 +47,7 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--pilih", help="ID test case yang dijalankan, misal TC-LGN-01,TC-TGS-01")
+    parser.add_argument("--browser", help="Browser yang diuji: chrome, firefox, edge (boleh dipisah koma)")
     parser.add_argument("--headed", action="store_true", help="Tampilkan browser (dibutuhkan bila ada CAPTCHA)")
     parser.add_argument("--daftar", action="store_true", help="Tampilkan daftar test case")
     parser.add_argument("--panduan", action="store_true", help="Tampilkan skenario uji manual")
@@ -64,6 +66,7 @@ def terapkan_override(args: argparse.Namespace) -> None:
         "SUNAN_PENGGUNA": args.pengguna,
         "SUNAN_SANDI": args.sandi,
         "SUNAN_URL_TUGAS": args.url_tugas,
+        "BROWSER_UJI": args.browser,
     }
     for kunci, nilai in pasangan.items():
         if nilai:
@@ -105,6 +108,17 @@ def cetak_daftar() -> None:
     print("=" * 72)
 
 
+def jalankan_pytest(konfigurasi, nama_browser: str, otomatis: list[str]) -> int:
+    """Jalankan pytest untuk satu browser dalam proses terpisah."""
+    junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
+    perintah = [sys.executable, "-m", "pytest", "src/uji", "-ra", f"--junitxml={junit}"]
+    if otomatis:
+        perintah += ["-k", kunci_pilihan(",".join(otomatis))]
+    lingkungan = dict(os.environ, BROWSER_UJI=nama_browser)
+    selesai = subprocess.run(perintah, cwd=AKAR, env=lingkungan)
+    return selesai.returncode
+
+
 def main() -> int:
     args = parse_args()
 
@@ -142,19 +156,39 @@ def main() -> int:
         if not otomatis:
             return 0
 
-    logger.info("Menguji %s", konfigurasi.url)
-    junit = konfigurasi.folder_hasil / "junit.xml"
-    argumen = ["src/uji", "-ra", f"--junitxml={junit}"]
-    if otomatis:
-        argumen += ["-k", kunci_pilihan(",".join(otomatis))]
+    kode_keluar = 0
+    for nama_browser in konfigurasi.browser:
+        os.environ["BROWSER_UJI"] = nama_browser
+        biner = cari_biner(nama_browser, konfigurasi)
+        logger.info(
+            "Menjalankan pengujian dengan %s (browser: %s)",
+            nama_browser,
+            biner or "tidak ditemukan, mengandalkan Selenium Manager",
+        )
 
-    kode = pytest.main(argumen)
-    laporan = tulis_laporan(junit, konfigurasi.folder_hasil, konfigurasi)
+        junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
+        kode = jalankan_pytest(konfigurasi, nama_browser, otomatis)
+        kode_keluar = kode_keluar or kode
+        tulis_laporan(junit, konfigurasi.folder_hasil, konfigurasi, nama_browser, biner)
 
+    laporan_gabungan = _gabungkan_laporan(konfigurasi)
     print()
-    print(laporan.read_text(encoding="utf-8"))
-    print(f"Laporan tersimpan di {laporan}")
-    return int(kode)
+    print(laporan_gabungan.read_text(encoding="utf-8"))
+    print(f"Laporan tersimpan di {laporan_gabungan}")
+    return int(kode_keluar)
+
+
+def _gabungkan_laporan(konfigurasi) -> Path:
+    """Satukan laporan per browser menjadi satu berkas ringkasan."""
+    folder = konfigurasi.folder_hasil
+    bagian = []
+    for nama_browser in konfigurasi.browser:
+        berkas = folder / f"laporan_{nama_browser}.txt"
+        if berkas.exists():
+            bagian.append(berkas.read_text(encoding="utf-8"))
+    tujuan = folder / "laporan_pengujian.txt"
+    tujuan.write_text("\n".join(bagian), encoding="utf-8")
+    return tujuan
 
 
 if __name__ == "__main__":

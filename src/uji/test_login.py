@@ -4,24 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from src.browser import buat_driver, tutup_driver
 from src.halaman.login import HalamanLogin
 
 # Pesan galat tidak boleh menyebut isian yang salah, hanya menyatakan login gagal.
 KATA_ISIAN = ("password", "sandi", "username", "nama pengguna", "akun tidak")
-
-
-@pytest.fixture(scope="module")
-def browser_login(konfigurasi):
-    """Browser tersendiri supaya uji login tidak mengganggu sesi uji lain."""
-    driver = buat_driver(konfigurasi)
-    yield driver
-    tutup_driver(driver)
-
-
-def _siap_login(driver, konfigurasi):
-    halaman = HalamanLogin(driver, konfigurasi).buka()
-    return halaman
 
 
 @pytest.mark.lgn
@@ -30,7 +16,7 @@ def test_tc_lgn_01_login_kredensial_valid(browser_login, konfigurasi):
     if not konfigurasi.punya_kredensial:
         pytest.skip("Kredensial akun mahasiswa belum diisi (SUNAN_PENGGUNA dan SUNAN_SANDI).")
 
-    halaman = _siap_login(browser_login, konfigurasi)
+    halaman = HalamanLogin(browser_login, konfigurasi).buka()
     halaman.isi_kredensial(konfigurasi.pengguna, konfigurasi.sandi)
     if not halaman.tunggu_captcha():
         pytest.skip("reCAPTCHA belum diisi. Jalankan ulang dengan --headed lalu lengkapi CAPTCHA.")
@@ -46,7 +32,7 @@ def test_tc_lgn_02_login_kredensial_tidak_valid(browser_login, konfigurasi):
     if not konfigurasi.punya_kredensial:
         pytest.skip("Kredensial akun mahasiswa belum diisi (SUNAN_PENGGUNA dan SUNAN_SANDI).")
 
-    halaman = _siap_login(browser_login, konfigurasi)
+    halaman = HalamanLogin(browser_login, konfigurasi).buka()
     halaman.isi_kredensial(konfigurasi.pengguna, "kata-sandi-salah-untuk-uji")
     if not halaman.tunggu_captcha():
         pytest.skip("reCAPTCHA belum diisi. Jalankan ulang dengan --headed lalu lengkapi CAPTCHA.")

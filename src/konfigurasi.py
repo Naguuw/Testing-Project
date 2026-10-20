@@ -8,16 +8,19 @@ from pathlib import Path
 
 AKAR = Path(__file__).resolve().parent.parent
 
+BROWSER_DIDUKUNG = ("chrome", "firefox", "edge")
+ALIAS_BROWSER = {"chromium": "chrome", "brave": "chrome", "msedge": "edge", "mozilla": "firefox"}
+
 
 @dataclass(frozen=True)
 class Konfigurasi:
     url: str
     pengguna: str
     sandi: str
-    peramban: str
+    browser: tuple[str, ...]
     headless: bool
-    biner_peramban: str
-    driver_biner: str
+    biner: dict[str, str]
+    driver: dict[str, str]
     url_tugas: str
     folder_berkas: Path
     folder_hasil: Path
@@ -61,16 +64,47 @@ def ambil_benar(nama: str, bawaan: bool) -> bool:
     return nilai.strip().lower() in {"1", "true", "ya", "on"}
 
 
+def daftar_browser(nilai: str) -> tuple[str, ...]:
+    """Terjemahkan daftar browser dari .env menjadi nama baku yang didukung."""
+    hasil: list[str] = []
+    for bagian in nilai.split(","):
+        nama = bagian.strip().lower()
+        if not nama:
+            continue
+        nama = ALIAS_BROWSER.get(nama, nama)
+        if nama not in BROWSER_DIDUKUNG:
+            raise ValueError(
+                f"Browser '{nama}' tidak didukung. Pilihan: {', '.join(BROWSER_DIDUKUNG)}."
+            )
+        if nama not in hasil:
+            hasil.append(nama)
+    return tuple(hasil) or ("chrome",)
+
+
+def browser_terpilih() -> tuple[str, ...]:
+    """Daftar browser aktif, dibaca dari .env bila ada."""
+    muat_env()
+    return daftar_browser(os.environ.get("BROWSER_UJI", "chrome"))
+
+
 def bangun_konfigurasi() -> Konfigurasi:
     muat_env()
     return Konfigurasi(
         url=ambil_teks("SUNAN_URL", "https://sunan.umk.ac.id"),
         pengguna=ambil_teks("SUNAN_PENGGUNA"),
         sandi=ambil_teks("SUNAN_SANDI"),
-        peramban=ambil_teks("PERAMBAN", "chrome").lower(),
+        browser=daftar_browser(os.environ.get("BROWSER_UJI", "chrome")),
         headless=ambil_benar("HEADLESS", True),
-        biner_peramban=ambil_teks("BROWSER_BINARY"),
-        driver_biner=ambil_teks("CHROMEDRIVER_PATH"),
+        biner={
+            "chrome": ambil_teks("BINER_CHROME"),
+            "firefox": ambil_teks("BINER_FIREFOX"),
+            "edge": ambil_teks("BINER_EDGE"),
+        },
+        driver={
+            "chrome": ambil_teks("DRIVER_CHROME"),
+            "firefox": ambil_teks("DRIVER_FIREFOX"),
+            "edge": ambil_teks("DRIVER_EDGE"),
+        },
         url_tugas=ambil_teks("SUNAN_URL_TUGAS"),
         folder_berkas=AKAR / "berkas",
         folder_hasil=AKAR / "hasil",

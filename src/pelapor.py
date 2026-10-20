@@ -34,16 +34,17 @@ def simpan_tangkapan(driver, folder: Path, nama: str) -> Path:
     return berkas
 
 
-def tulis_laporan(junit: Path, folder: Path, konfigurasi) -> Path:
+def tulis_laporan(junit: Path, folder: Path, konfigurasi, nama_browser: str, biner: str | None) -> Path:
     """Ubah hasil pytest (JUnit XML) menjadi laporan teks yang mudah dibaca."""
     folder.mkdir(parents=True, exist_ok=True)
-    tujuan = folder / "laporan_pengujian.txt"
+    tujuan = folder / f"laporan_{nama_browser}.txt"
 
     baris = [
         "LAPORAN PENGUJIAN OTOMATIS - SUNAN UMK",
         f"Waktu              : {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}",
         f"Situs              : {konfigurasi.url}",
-        f"Peramban           : {konfigurasi.peramban} (headless={konfigurasi.headless})",
+        f"Browser            : {nama_browser} (headless={konfigurasi.headless})",
+        f"Lokasi browser     : {biner or 'ditemukan otomatis oleh Selenium Manager'}",
         f"Batas ukuran uji   : {konfigurasi.batas_unggah_mb} MB",
         "",
     ]
