@@ -42,7 +42,7 @@ LMS Sunan Universitas Muria Kudus, URL `sunan.umk.ac.id`, berupa aplikasi web (k
 
 ### 1.5 Manfaat
 
-Hasil pengujian menjadi masukan perbaikan bagi pengelola Sunan UMK, khususnya pada penanganan galat unggah. Bagi mahasiswa penguji, rencana ini melatih penyusunan rencana uji, penurunan test case dengan teknik black-box, dan pemanfaatan otomasi untuk pengujian regresi.
+Hasil pengujian menjadi masukan perbaikan bagi pengelola Sunan UMK, khususnya pada penanganan error unggah. Bagi mahasiswa penguji, rencana ini melatih penyusunan rencana uji, penurunan test case dengan teknik black-box, dan pemanfaatan otomasi untuk pengujian regresi.
 
 ---
 
@@ -103,9 +103,9 @@ Prioritas: **T** = Tinggi, **S** = Sedang. Metode: **A** = Otomasi (Selenium), *
 | TC-LGN-02 | Login | Login dengan kredensial tidak valid | EP | Isi username valid dengan password salah pada halaman login, lalu klik **Masuk**. | Login ditolak, pesan kesalahan tampil, pengguna tetap di halaman login, dan pesan tidak menyebut isian yang salah. | T | A* |
 | TC-MKL-01 | Mata Kuliah | Membuka mata kuliah dan mengunduh materi | UC | Login sebagai mahasiswa uji, klik satu mata kuliah, buka salah satu topiknya, lalu unduh satu berkas materi. | Halaman mata kuliah dan materi tampil lengkap, berkas terunduh utuh dan dapat dibuka. | T | M |
 | TC-TGS-01 | Tugas | Unggah tugas format PDF valid | EP | Buka tugas pada mata kuliah uji, unggah PDF sebelum tenggat, lalu simpan perubahan. | Berkas diterima, status berubah menjadi terkumpul, dan nama berkas tampil. | T | A |
-| TC-TGS-02 | Tugas | Ukuran di bawah dan tepat pada batas | BVA | Unggah (terpisah) PDF 5.242.879 byte, lalu PDF 5.242.880 byte (tepat 5 MB). | Kedua berkas diterima tanpa pesan galat. Batas 5 MB mengacu BR-01 Test Plan dan perlu dicocokkan dengan perilaku sistem. | S | A |
+| TC-TGS-02 | Tugas | Ukuran di bawah dan tepat pada batas | BVA | Unggah (terpisah) PDF 5.242.879 byte, lalu PDF 5.242.880 byte (tepat 5 MB). | Kedua berkas diterima tanpa pesan error. Batas 5 MB mengacu BR-01 Test Plan dan perlu dicocokkan dengan perilaku sistem. | S | A |
 | TC-TGS-03 | Tugas | Berkas kosong (0 byte) | BVA, EP | Unggah berkas 0 byte (`berkas_0_byte.bin`) melalui *File picker*. | Berkas ditolak dengan pesan yang jelas dan status pengumpulan tidak berubah. | S | A |
-| TC-TGS-04 | Tugas | Koneksi terputus saat unggah | UC | Mulai mengunggah berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. | Galat unggah tampil, tidak ada pengumpulan setengah jadi yang tersimpan, dan pengguna dapat mengunggah ulang. | T | M |
+| TC-TGS-04 | Tugas | Koneksi terputus saat unggah | UC | Mulai mengunggah berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. | error unggah tampil, tidak ada pengumpulan setengah jadi yang tersimpan, dan pengguna dapat mengunggah ulang. | T | M |
 | TC-TGS-05 | Tugas | Format tidak diizinkan | EP | Unggah berkas tiruan tidak berbahaya berekstensi `.exe` (tipe diizinkan: doc, docx, pdf, rtf). | Berkas ditolak dengan pesan bahwa format tidak didukung. | T | A |
 | TC-TGS-06 | Tugas | Mengirim dua berkas dengan nama yang sama | UC | Pada tugas di mata kuliah uji, unggah satu PDF lewat *File picker > Upload a file*, lalu unggah PDF lain dengan nama yang sama. | Sistem mendeteksi nama yang sama dan meminta keputusan pengguna (timpa, ganti nama, atau batal), tanpa menimpa berkas secara diam-diam. | S | M |
 | TC-AKS-01 | Penilaian | Mahasiswa membuka halaman penilaian | UC | Login sebagai mahasiswa uji, lalu buka halaman Grades (*Home > Dashboard > Grades*). | Halaman Grades menampilkan nama mahasiswa dan daftar nilai mata kuliah yang diikutinya sendiri. | T | M |
@@ -186,7 +186,7 @@ Skenario otomatis dapat dijalankan berulang pada Chrome, Firefox, dan Edge. Peng
 
 ### 5.4 Keterbatasan Otomatisasi
 
-Otomasi terhambat bila halaman memakai CAPTCHA, dan skrip mudah rusak ketika locator elemen berubah akibat pembaruan tampilan. Otomasi juga tidak menilai tampilan secara subjektif (misalnya kejelasan pesan galat) dan sulit meniru gangguan fisik seperti Wi-Fi yang diputus, sehingga skenario tersebut tetap diuji manual.
+Otomasi terhambat bila halaman memakai CAPTCHA, dan skrip mudah rusak ketika locator elemen berubah akibat pembaruan tampilan. Otomasi juga tidak menilai tampilan secara subjektif (misalnya kejelasan pesan error) dan sulit meniru gangguan fisik seperti Wi-Fi yang diputus, sehingga skenario tersebut tetap diuji manual.
 
 Pada halaman login Sunan UMK terdapat reCAPTCHA Enterprise dengan centang "bukan robot". Centang tersebut hanya dapat dicentang manusia, sehingga skenario dijalankan dalam mode headed: operator mencocokkan centang di jendela browser, lalu skenario otomatis melanjutkan setelah respons terisi. Bila centang tidak dicentang dalam batas waktu, skenario ditandai terhalang (dilewati), bukan gagal.
 
@@ -208,16 +208,16 @@ Dari 10 test case, 9 lulus dan 1 gagal (`TC-TGS-04`), sehingga tingkat keberhasi
 
 ### 6.2 Temuan
 
-- **`TC-TGS-04` (gagal):** saat koneksi dimatikan, *File picker* tidak memuat dan tidak menampilkan pesan galat yang jelas. Dugaan penyebab: kegagalan permintaan jaringan pada antarmuka unggah belum ditangani (tanpa batas waktu dan pesan cadangan).
+- **`TC-TGS-04` (gagal):** saat koneksi dimatikan, *File picker* tidak memuat dan tidak menampilkan pesan error yang jelas. Dugaan penyebab: kegagalan permintaan jaringan pada antarmuka unggah belum ditangani (tanpa batas waktu dan pesan cadangan).
 - **Batas ukuran berkas:** sistem membatasi 20 MB dan maksimal 1 berkas, berbeda dari 5 MB pada BR-01 Test Plan. `TC-TGS-02` perlu diuji ulang terhadap batas 20 MB.
-- **Pesan galat:** pesan penolakan berkas kosong dan format tidak diizinkan berbahasa Inggris, dan pesan format tidak menyebut tipe berkas yang diizinkan.
+- **Pesan error:** pesan penolakan berkas kosong dan format tidak diizinkan berbahasa Inggris, dan pesan format tidak menyebut tipe berkas yang diizinkan.
 - **Nilai positif (`TC-TGS-06`):** dua berkas bernama sama ditangani dengan dialog *File exists* (Overwrite, Rename, Cancel), sehingga berkas tidak tertimpa tanpa konfirmasi.
 
 ### 6.3 Pembahasan
 
-Fitur yang bersifat alur sederhana (login, membuka mata kuliah, melihat nilai) seluruhnya lulus. Kegagalan hanya muncul pada skenario alternatif, yaitu koneksi terputus, yang diturunkan dari teknik Use Case Testing. Ini menunjukkan bahwa pengujian yang hanya memeriksa masukan valid dan tidak valid (EP) belum cukup, karena kelemahan penanganan galat jaringan baru terlihat saat alur yang tidak ideal dicoba. Dampaknya nyata bagi mahasiswa: unggah yang gagal tanpa pesan jelas dapat membuat mahasiswa mengira tugasnya sudah terkirim, terutama menjelang tenggat.
+Fitur yang bersifat alur sederhana (login, membuka mata kuliah, melihat nilai) seluruhnya lulus. Kegagalan hanya muncul pada skenario alternatif, yaitu koneksi terputus, yang diturunkan dari teknik Use Case Testing. Ini menunjukkan bahwa pengujian yang hanya memeriksa masukan valid dan tidak valid (EP) belum cukup, karena kelemahan penanganan error jaringan baru terlihat saat alur yang tidak ideal dicoba. Dampaknya nyata bagi mahasiswa: unggah yang gagal tanpa pesan jelas dapat membuat mahasiswa mengira tugasnya sudah terkirim, terutama menjelang tenggat.
 
-Pada fitur unggah, validasi masukan sudah baik: berkas kosong, format tidak diizinkan, dan nama ganda semuanya ditangani sistem. Kekurangannya ada pada kejelasan pesan (berbahasa Inggris dan tidak menyebut tipe berkas yang diizinkan) serta ketidakselarasan batas ukuran berkas dengan dokumen kebutuhan (20 MB pada sistem, 5 MB pada BR-01). Ketidakselarasan ini bukan galat sistem, tetapi menandakan dokumen kebutuhan perlu diperbarui, sehingga pengujian juga berfungsi sebagai pemeriksa konsistensi spesifikasi.
+Pada fitur unggah, validasi masukan sudah baik: berkas kosong, format tidak diizinkan, dan nama ganda semuanya ditangani sistem. Kekurangannya ada pada kejelasan pesan (berbahasa Inggris dan tidak menyebut tipe berkas yang diizinkan) serta ketidakselarasan batas ukuran berkas dengan dokumen kebutuhan (20 MB pada sistem, 5 MB pada BR-01). Ketidakselarasan ini bukan error sistem, tetapi menandakan dokumen kebutuhan perlu diperbarui, sehingga pengujian juga berfungsi sebagai pemeriksa konsistensi spesifikasi.
 
 Perlu dicatat bahwa jumlah test case pada paper ini hanya 10 dan dijalankan pada satu browser, sehingga hasilnya belum dapat digeneralisasi untuk seluruh fitur dan lingkungan.
 
@@ -227,11 +227,11 @@ Perlu dicatat bahwa jumlah test case pada paper ini hanya 10 dan dijalankan pada
 
 ### 7.1 Kesimpulan
 
-Pengujian black-box dengan teknik UC, EP, dan BVA terhadap Sunan UMK menghasilkan 10 test case dengan tingkat keberhasilan 90%. Fungsi inti berjalan sesuai spesifikasi, namun penanganan galat saat koneksi terputus perlu diperbaiki. Dengan demikian tujuan menyusun dan melaksanakan pengujian terpenuhi, dengan catatan pengujian non-fungsional baru berupa rencana.
+Pengujian black-box dengan teknik UC, EP, dan BVA terhadap Sunan UMK menghasilkan 10 test case dengan tingkat keberhasilan 90%. Fungsi inti berjalan sesuai spesifikasi, namun penanganan error saat koneksi terputus perlu diperbaiki. Dengan demikian tujuan menyusun dan melaksanakan pengujian terpenuhi, dengan catatan pengujian non-fungsional baru berupa rencana.
 
 ### 7.2 Saran
 
-- Menambahkan pesan galat dan batas waktu pada antarmuka unggah.
+- Menambahkan pesan error dan batas waktu pada antarmuka unggah.
 - Menyeragamkan bahasa pesan dan menyebut tipe berkas yang diizinkan.
 - Menyesuaikan batas ukuran berkas pada BR-01 dengan perilaku sistem (20 MB).
 - Melanjutkan pengujian non-fungsional (kinerja, kompatibilitas browser, keamanan dasar, keandalan).
@@ -273,6 +273,6 @@ Test case di bawah ini **tidak termasuk** 10 test case pada dokumen acuan dan ti
 | EXT-12 | Tugas | Unggah lebih dari 1 berkas | Sistem membatasi maksimal 1 berkas |
 | EXT-13 | Materi | Tautan materi rusak (404) | Tidak ada link mati |
 | EXT-14 | Keamanan | Atribut cookie sesi Secure/HttpOnly | Pemeriksaan tambahan, perlu izin |
-| EXT-15 | Keamanan | Pesan galat membocorkan detail teknis | Pemeriksaan tambahan, perlu izin |
+| EXT-15 | Keamanan | Pesan error membocorkan detail teknis | Pemeriksaan tambahan, perlu izin |
 | EXT-16 | NFR | Tampilan responsif HP/tablet/desktop | Pemeriksaan manual |
 | EXT-17 | NFR | Konsistensi bahasa pesan dan navigasi keyboard | Pemeriksaan manual |

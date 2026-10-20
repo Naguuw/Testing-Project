@@ -1,13 +1,13 @@
-"""Titik eksekusi pengujian otomatis website e-learning Sunan UMK.
-
-Jalankan:
-    python main.py                 semua test case otomatis di semua browser
-    python main.py --headed        tampilkan browser (perlu bila ada CAPTCHA)
-    python main.py --browser chrome,firefox
-    python main.py --pilih TC-LGN-01,TC-TGS-01
-    python main.py --panduan       tampilkan skenario uji manual
-    python main.py --daftar        tampilkan daftar test case
-"""
+# Titik eksekusi pengujian otomatis website e-learning Sunan UMK.
+#
+# Perintah yang dipakai:
+# python main.py                 semua test case otomatis di semua browser
+# python main.py --headed        tampilkan browser (perlu bila ada CAPTCHA)
+# python main.py --login-manual  login sendiri di jendela browser
+# python main.py --browser chrome,firefox
+# python main.py --pilih TC-LGN-01,TC-TGS-01
+# python main.py --panduan       tampilkan skenario uji manual
+# python main.py --daftar        tampilkan daftar test case
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ if str(AKAR) not in sys.path:
 
 from src.browser import cari_biner
 from src.data_uji import siapkan_berkas
-from src.konfigurasi import bangun_konfigurasi
+from src.konfigurasi import ambil_benar, bangun_konfigurasi
 from src.pelapor import siapkan_log, tulis_laporan
 from src.uji.panduan_manual import cetak_panduan, skenario_manual
 
@@ -47,11 +47,22 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--pilih", help="ID test case yang dijalankan, misal TC-LGN-01,TC-TGS-01")
-    parser.add_argument("--browser", help="Browser yang diuji: chrome, firefox, edge (boleh dipisah koma)")
-    parser.add_argument("--headed", action="store_true", help="Tampilkan browser (dibutuhkan bila ada CAPTCHA)")
+    parser.add_argument(
+        "--browser", help="Browser yang diuji: chrome, firefox, edge (boleh dipisah koma)"
+    )
+    parser.add_argument(
+        "--headed", action="store_true", help="Tampilkan browser (dibutuhkan bila ada CAPTCHA)"
+    )
+    parser.add_argument(
+        "--login-manual",
+        action="store_true",
+        help="Login sendiri di jendela browser, lalu skenario lanjut otomatis",
+    )
     parser.add_argument("--daftar", action="store_true", help="Tampilkan daftar test case")
     parser.add_argument("--panduan", action="store_true", help="Tampilkan skenario uji manual")
-    parser.add_argument("--buat-berkas", action="store_true", help="Siapkan berkas uji lalu berhenti")
+    parser.add_argument(
+        "--buat-berkas", action="store_true", help="Siapkan berkas uji lalu berhenti"
+    )
     parser.add_argument("--url", help="Alamat situs yang diuji")
     parser.add_argument("--pengguna", help="Nama pengguna akun uji")
     parser.add_argument("--sandi", help="Kata sandi akun uji")
@@ -60,7 +71,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def terapkan_override(args: argparse.Namespace) -> None:
-    """Nilai dari baris perintah lebih tinggi prioritasnya daripada berkas .env."""
     pasangan = {
         "SUNAN_URL": args.url,
         "SUNAN_PENGGUNA": args.pengguna,
@@ -73,10 +83,12 @@ def terapkan_override(args: argparse.Namespace) -> None:
             os.environ[kunci] = nilai
     if args.headed:
         os.environ["HEADLESS"] = "0"
+    if args.login_manual:
+        os.environ["HEADLESS"] = "0"
+        os.environ["LOGIN_MANUAL"] = "1"
 
 
 def kunci_pilihan(daftar_id: str) -> str:
-    """Ubah daftar ID test case menjadi penapis pytest (-k)."""
     kunci = []
     for id_uji in daftar_id.split(","):
         id_uji = id_uji.strip().lower()
@@ -86,7 +98,6 @@ def kunci_pilihan(daftar_id: str) -> str:
 
 
 def pisahkan_pilihan(daftar_id: str) -> tuple[list[str], list[str]]:
-    """Pisahkan ID pilihan menjadi yang dikerjakan otomatis dan yang manual."""
     otomatis, manual = [], []
     for id_uji in (bagian.strip().upper() for bagian in daftar_id.split(",")):
         if not id_uji:
@@ -109,7 +120,6 @@ def cetak_daftar() -> None:
 
 
 def jalankan_pytest(konfigurasi, nama_browser: str, otomatis: list[str]) -> int:
-    """Jalankan pytest untuk satu browser dalam proses terpisah."""
     junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
     perintah = [sys.executable, "-m", "pytest", "src/uji", "-ra", f"--junitxml={junit}"]
     if otomatis:
@@ -140,10 +150,11 @@ def main() -> int:
         logger.info("Berkas uji siap di %s", konfigurasi.folder_berkas)
         return 0
 
-    if not konfigurasi.punya_kredensial:
+    if not konfigurasi.punya_kredensial and not ambil_benar("LOGIN_MANUAL", False):
         logger.warning(
             "Kredensial akun mahasiswa belum diisi, seluruh skenario akan dilewati. "
-            "Isi SUNAN_PENGGUNA dan SUNAN_SANDI di berkas .env."
+            "Isi SUNAN_PENGGUNA dan SUNAN_SANDI di berkas .env, "
+            "atau pakai --login-manual."
         )
     if not konfigurasi.url_tugas:
         logger.warning("SUNAN_URL_TUGAS belum diisi, uji unggah berkas tidak dapat dijalankan.")
@@ -179,7 +190,6 @@ def main() -> int:
 
 
 def _gabungkan_laporan(konfigurasi) -> Path:
-    """Satukan laporan per browser menjadi satu berkas ringkasan."""
     folder = konfigurasi.folder_hasil
     bagian = []
     for nama_browser in konfigurasi.browser:

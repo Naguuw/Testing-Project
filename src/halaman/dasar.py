@@ -1,4 +1,4 @@
-"""Pencarian elemen yang tahan perubahan tampilan halaman Sunan UMK."""
+# Pencarian elemen dengan beberapa selector kandidat.
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ PESAN_CAPTCHA_KUOTA = ("quota", "too many requests", "recaptcha error", "unusual
 
 
 class ElemenTidakDitemukan(Exception):
-    """Dilempar saat tidak satu pun selector kandidat cocok."""
+    # Dilempar saat seluruh selector kandidat gagal cocok.
+    pass
 
 
 def cari_pertama(driver, kandidat: list[tuple[str, str]], batas: int = 10):
-    """Kembalikan elemen pertama yang ditemukan dari daftar (strategi, selector)."""
     dicoba = []
     for strategi, selector in kandidat:
         dicoba.append(f"{strategi}={selector}")
@@ -34,7 +34,6 @@ def teks_halaman(driver) -> str:
 
 
 def cari_teks(driver, frasa: tuple[str, ...]) -> str:
-    """Kembalikan baris teks halaman yang memuat salah satu frasa."""
     isi = teks_halaman(driver)
     for baris in isi.splitlines():
         rendah = baris.lower()
@@ -48,7 +47,7 @@ def ada_captcha(driver) -> bool:
 
 
 def captcha_terisi(driver) -> bool:
-    """reCAPTCHA menyimpan jawaban di medan g-recaptcha-response pada halaman induk."""
+    # reCAPTCHA menyimpan jawaban di medan g-recaptcha-response pada halaman induk.
     medan = driver.find_elements(By.ID, "g-recaptcha-response")
     if not medan:
         return False

@@ -1,5 +1,4 @@
-"""Konfigurasi uji: dibaca dari berkas .env lalu dipakai seluruh modul."""
-
+# Konfigurasi uji: dibaca dari berkas .env lalu dipakai seluruh modul.
 from __future__ import annotations
 
 import os
@@ -26,6 +25,7 @@ class Konfigurasi:
     folder_hasil: Path
     waktu_tunggu: int
     waktu_captcha: int
+    waktu_login_manual: int
     batas_unggah_mb: int
 
     @property
@@ -34,7 +34,7 @@ class Konfigurasi:
 
 
 def muat_env(path: Path | None = None) -> None:
-    """Isi os.environ dari berkas .env tanpa menimpa nilai yang sudah ada."""
+    # Nilai yang sudah ada di environment tidak ditimpa.
     berkas = path or AKAR / ".env"
     if not berkas.exists():
         return
@@ -65,7 +65,7 @@ def ambil_benar(nama: str, bawaan: bool) -> bool:
 
 
 def daftar_browser(nilai: str) -> tuple[str, ...]:
-    """Terjemahkan daftar browser dari .env menjadi nama baku yang didukung."""
+    # Alias seperti brave atau chromium dipetakan ke nama baku.
     hasil: list[str] = []
     for bagian in nilai.split(","):
         nama = bagian.strip().lower()
@@ -82,7 +82,6 @@ def daftar_browser(nilai: str) -> tuple[str, ...]:
 
 
 def browser_terpilih() -> tuple[str, ...]:
-    """Daftar browser aktif, dibaca dari .env bila ada."""
     muat_env()
     return daftar_browser(os.environ.get("BROWSER_UJI", "chrome"))
 
@@ -110,5 +109,6 @@ def bangun_konfigurasi() -> Konfigurasi:
         folder_hasil=AKAR / "hasil",
         waktu_tunggu=ambil_angka("WAKTU_TUNGGU", 15),
         waktu_captcha=ambil_angka("WAKTU_CAPTCHA", 120),
+        waktu_login_manual=ambil_angka("WAKTU_LOGIN_MANUAL", 300),
         batas_unggah_mb=ambil_angka("BATAS_UNGGAH_MB", 5),
     )

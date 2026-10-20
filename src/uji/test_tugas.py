@@ -1,4 +1,4 @@
-"""Test case pengumpulan tugas: TC-TGS-01, TC-TGS-02, TC-TGS-03, dan TC-TGS-05."""
+# Test case pengumpulan tugas: TC-TGS-01, TC-TGS-02, TC-TGS-03, dan TC-TGS-05.
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def halaman_tugas(browser, konfigurasi, sesi_mahasiswa):
 
 @pytest.mark.tgs
 def test_tc_tgs_01_unggah_pdf_valid(halaman_tugas, berkas):
-    """TC-TGS-01: PDF valid harus diterima dan statusnya menjadi terkumpul."""
+    # TC-TGS-01: PDF valid diterima dan statusnya menjadi terkumpul.
     halaman_tugas.buka()
     nama = halaman_tugas.unggah(berkas["pdf_valid"])
     halaman_tugas.kirim()
@@ -28,7 +28,7 @@ def test_tc_tgs_01_unggah_pdf_valid(halaman_tugas, berkas):
 
 @pytest.mark.tgs
 def test_tc_tgs_02_ukuran_batas(halaman_tugas, berkas, konfigurasi):
-    """TC-TGS-02: berkas tepat di bawah dan tepat pada batas ukuran harus diterima."""
+    # TC-TGS-02: berkas di bawah dan tepat pada batas ukuran diterima.
     for kunci in ("pdf_batas_bawah", "pdf_batas_tepat"):
         berkas_uji = berkas[kunci]
         ukuran = berkas_uji.stat().st_size
@@ -42,23 +42,27 @@ def test_tc_tgs_02_ukuran_batas(halaman_tugas, berkas, konfigurasi):
 
 @pytest.mark.tgs
 def test_tc_tgs_03_berkas_kosong(halaman_tugas, berkas):
-    """TC-TGS-03: berkas 0 byte harus ditolak dan status pengumpulan tidak berubah."""
+    # TC-TGS-03: berkas 0 byte ditolak dan status pengumpulan tidak berubah.
     halaman_tugas.buka()
     halaman_tugas.unggah(berkas["berkas_kosong"])
     halaman_tugas.kirim()
 
     pesan = halaman_tugas.pesan_tolak()
     assert pesan, "Berkas kosong seharusnya ditolak dengan pesan yang jelas"
-    assert not halaman_tugas.sudah_terkumpul(), "Status pengumpulan berubah setelah berkas kosong diunggah"
+    assert (
+        not halaman_tugas.sudah_terkumpul()
+    ), "Status pengumpulan berubah setelah berkas kosong diunggah"
 
 
 @pytest.mark.tgs
 def test_tc_tgs_05_format_tidak_diizinkan(halaman_tugas, berkas):
-    """TC-TGS-05: berkas .exe harus ditolak dengan pesan format tidak didukung."""
+    # TC-TGS-05: berkas .exe ditolak dengan pesan format tidak didukung.
     halaman_tugas.buka()
     halaman_tugas.unggah(berkas["berkas_terlarang"])
     halaman_tugas.kirim()
 
     pesan = halaman_tugas.pesan_tolak()
     assert pesan, "Berkas .exe seharusnya ditolak dengan pesan yang jelas"
-    assert not halaman_tugas.sudah_terkumpul(), "Status pengumpulan berubah setelah berkas terlarang diunggah"
+    assert (
+        not halaman_tugas.sudah_terkumpul()
+    ), "Status pengumpulan berubah setelah berkas terlarang diunggah"

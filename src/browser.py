@@ -1,4 +1,4 @@
-"""Pembuatan driver browser: Chrome/Chromium/Brave, Firefox, dan Edge."""
+# Pembuatan driver browser: Chrome/Chromium/Brave, Firefox, dan Edge.
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class ProfilBrowser:
 
 
 def cari_biner(nama: str, konf: Konfigurasi) -> str | None:
-    """Lokasi browser: dari .env, lalu dari PATH, lalu dari lokasi umum."""
+    # Urutan pencarian browser: .env, PATH, lalu lokasi umum.
     dari_env = konf.biner.get(nama, "")
     if dari_env:
         return dari_env
@@ -81,7 +81,7 @@ def cari_biner(nama: str, konf: Konfigurasi) -> str | None:
 
 
 def cari_driver(nama: str, konf: Konfigurasi) -> str | None:
-    """Lokasi web driver: dari .env, lalu lokasi umum, lalu Selenium Manager."""
+    # Urutan pencarian driver: .env, lokasi umum, lalu Selenium Manager.
     dari_env = konf.driver.get(nama, "")
     if dari_env:
         return dari_env
@@ -137,7 +137,7 @@ def _opsi_edge(konf: Konfigurasi, biner: str | None) -> OpsiEdge:
 
 
 def buat_driver(konf: Konfigurasi, profil: ProfilBrowser) -> webdriver.RemoteWebDriver:
-    """Buka browser sesuai profil; driver diambil dari lokasi yang tersedia."""
+    # Driver diambil dari lokasi yang tersedia, kalau tidak ada andalkan Selenium Manager.
     if profil.nama == "firefox":
         layanan = LayananFirefox(profil.driver) if profil.driver else LayananFirefox()
         return webdriver.Firefox(service=layanan, options=_opsi_firefox(konf, profil.biner))

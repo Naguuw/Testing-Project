@@ -1,5 +1,4 @@
-"""Pencatatan hasil uji: log, tangkapan layar, dan laporan akhir."""
-
+# Pencatatan hasil uji: log, tangkapan layar, dan laporan akhir.
 from __future__ import annotations
 
 import logging
@@ -8,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def siapkan_log(folder: Path) -> logging.Logger:
+def siapkan_log(folder: Path, nama_berkas: str = "pengujian.log") -> logging.Logger:
     folder.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("uji")
     logger.setLevel(logging.INFO)
@@ -18,7 +17,7 @@ def siapkan_log(folder: Path) -> logging.Logger:
     format_log = logging.Formatter("%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
     konsol = logging.StreamHandler()
     konsol.setFormatter(format_log)
-    berkas = logging.FileHandler(folder / "pengujian.log", encoding="utf-8")
+    berkas = logging.FileHandler(folder / nama_berkas, encoding="utf-8")
     berkas.setFormatter(format_log)
     logger.addHandler(konsol)
     logger.addHandler(berkas)
@@ -26,7 +25,7 @@ def siapkan_log(folder: Path) -> logging.Logger:
 
 
 def simpan_tangkapan(driver, folder: Path, nama: str) -> Path:
-    """Simpan screenshot sebagai bukti saat sebuah skenario gagal."""
+    # Dipakai sebagai bukti saat skenario gagal.
     folder.mkdir(parents=True, exist_ok=True)
     stempel = datetime.now().strftime("%Y%m%d-%H%M%S")
     berkas = folder / f"{nama}_{stempel}.png"
@@ -34,8 +33,9 @@ def simpan_tangkapan(driver, folder: Path, nama: str) -> Path:
     return berkas
 
 
-def tulis_laporan(junit: Path, folder: Path, konfigurasi, nama_browser: str, biner: str | None) -> Path:
-    """Ubah hasil pytest (JUnit XML) menjadi laporan teks yang mudah dibaca."""
+def tulis_laporan(
+    junit: Path, folder: Path, konfigurasi, nama_browser: str, biner: str | None
+) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     tujuan = folder / f"laporan_{nama_browser}.txt"
 
@@ -78,7 +78,8 @@ def tulis_laporan(junit: Path, folder: Path, konfigurasi, nama_browser: str, bin
         "",
         f"RINGKASAN: {jumlah['lulus']} lulus, {jumlah['gagal']} gagal, "
         f"{jumlah['dilewati']} dilewati dari {total} test case",
-        "Test case yang dilewati berarti skenario terhalang (misalnya CAPTCHA atau kredensial belum diisi).",
+        "Test case yang dilewati berarti skenario terhalang "
+        "(misalnya CAPTCHA atau kredensial belum diisi).",
     ]
     tujuan.write_text("\n".join(baris) + "\n", encoding="utf-8")
     return tujuan

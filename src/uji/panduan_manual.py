@@ -1,4 +1,4 @@
-"""Skenario uji manual yang tidak dikerjakan Selenium."""
+# Skenario uji manual yang tidak dikerjakan Selenium.
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ SKENARIO_MANUAL = [
         "TC-TGS-04",
         "Tugas",
         "Mulai mengunggah berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. "
-        "Perhatikan pesan galat dan apakah pengumpulan setengah jadi tersimpan.",
+        "Perhatikan pesan error dan apakah pengumpulan setengah jadi tersimpan.",
     ),
     (
         "TC-TGS-06",
@@ -40,7 +40,7 @@ SKENARIO_MANUAL = [
     (
         "NFR-03",
         "Keamanan Dasar",
-        "Periksa alamat memakai HTTPS, dan halaman terproteksi tidak dapat dibuka lagi lewat tombol Back.",
+        "Periksa alamat memakai HTTPS dan halaman terproteksi tidak terbuka lewat tombol Back.",
     ),
     (
         "NFR-04",
@@ -61,7 +61,6 @@ def cetak_panduan() -> None:
 
 
 def skenario_manual(daftar_id: list[str]) -> None:
-    """Tampilkan skenario manual untuk ID tertentu saja."""
     print()
     print("SKENARIO UJI MANUAL")
     print("=" * 72)

@@ -94,7 +94,7 @@ perlu pada Linux yang tidak punya Chrome, Firefox, maupun Edge.
 
 ### Windows
 
-```bat
+```
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -103,16 +103,17 @@ python main.py
 
 Perintah lain:
 
-```bat
+```
 python main.py --browser chrome
 python main.py --headed
+python main.py --login-manual
 python main.py --pilih TC-LGN-01
 python main.py --panduan
 ```
 
 ### Linux
 
-```bash
+```
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -162,12 +163,18 @@ otomasi terhambat oleh captcha. Dengan satu akun uji dan satu browser,
 prosesnya cukup: jalankan `python main.py --headed`, cocokkan checkbox,
 lalu biarkan skenario berjalan sendiri.
 
+Kalau ingin login sendiri sepenuhnya, pakai `python main.py --login-manual`.
+Skrip membuka jendela browser lalu menunggu kamu selesai login (username,
+password, dan centang CAPTCHA).Begitu sesi terdeteksi, skenario `TC-TGS-*`
+langsung berjalan tanpa campur lagi, dan kredensial di `.env` tidak perlu
+diisi.
+
 ## Catatan untuk Linux
 
 Chrome, Firefox, dan Edge sudah dipasang di mesin ini, sehingga `.env` tinggal
 menunjuk lokasi biner dan web driver. Bila perlu memasang ulang di Linux lain:
 
-```bash
+```
 # Firefox portable
 curl -sSL -o /tmp/firefox.tar.xz "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US"
 tar -xf /tmp/firefox.tar.xz -C ~/.local/opt/
@@ -213,7 +220,7 @@ langkahnya tersedia lewat `python main.py --panduan`.
 
 - Halaman login memakai reCAPTCHA, sehingga selalu butuh satu sentuhan
   manusia. Headless tanpa interaksi akan menandai skenario sebagai terhalang.
-- Otomasi tidak menilai kejelasan tampilan, sehingga pesan galat, daftar nilai,
+- Otomasi tidak menilai kejelasan tampilan, sehingga pesan error, daftar nilai,
   dan unduhan materi tetap diperiksa manual.
 - Skenario yang bergantung pada gangguan jaringan dan dialog nama berkas sama
   dikerjakan manual karena sulit ditiru skrip.

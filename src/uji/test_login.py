@@ -1,4 +1,4 @@
-"""Test case halaman login: TC-LGN-01 dan TC-LGN-02."""
+# Test case halaman login: TC-LGN-01 dan TC-LGN-02.
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ import pytest
 
 from src.halaman.login import HalamanLogin
 
-# Pesan galat tidak boleh menyebut isian yang salah, hanya menyatakan login gagal.
+# Pesan error tidak boleh menyebut isian yang salah, hanya menyatakan login gagal.
 KATA_ISIAN = ("password", "sandi", "username", "nama pengguna", "akun tidak")
 
 
 @pytest.mark.lgn
 def test_tc_lgn_01_login_kredensial_valid(browser_login, konfigurasi):
-    """TC-LGN-01: kredensial valid harus masuk ke dasbor mahasiswa."""
+    # TC-LGN-01: kredensial valid harus masuk ke dasbor mahasiswa.
     if not konfigurasi.punya_kredensial:
         pytest.skip("Kredensial akun mahasiswa belum diisi (SUNAN_PENGGUNA dan SUNAN_SANDI).")
 
@@ -28,7 +28,7 @@ def test_tc_lgn_01_login_kredensial_valid(browser_login, konfigurasi):
 
 @pytest.mark.lgn
 def test_tc_lgn_02_login_kredensial_tidak_valid(browser_login, konfigurasi):
-    """TC-LGN-02: password salah harus ditolak tanpa menyebut isian yang salah."""
+    # TC-LGN-02: password salah ditolak tanpa menyebut isian yang salah.
     if not konfigurasi.punya_kredensial:
         pytest.skip("Kredensial akun mahasiswa belum diisi (SUNAN_PENGGUNA dan SUNAN_SANDI).")
 
@@ -45,4 +45,4 @@ def test_tc_lgn_02_login_kredensial_tidak_valid(browser_login, konfigurasi):
 
     pesan_rendah = hasil.pesan.lower()
     for kata in KATA_ISIAN:
-        assert kata not in pesan_rendah, f"Pesan galat menyebut isian yang salah: {hasil.pesan}"
+        assert kata not in pesan_rendah, f"Pesan error menyebut isian yang salah: {hasil.pesan}"

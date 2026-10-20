@@ -1,4 +1,4 @@
-"""Halaman tugas (Modu) Sunan UMK: unggah berkas, kirim, dan baca status pengumpulan."""
+# Halaman tugas: unggah berkas, kirim, dan baca status pengumpulan.
 
 from __future__ import annotations
 
@@ -11,6 +11,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from .dasar import ElemenTidakDitemukan, cari_pertama, cari_teks, teks_halaman
 
+
+def _xpath_teks(frasa: str) -> str:
+    # translate() membuat pencocokan teks tidak membedakan huruf besar-kecil.
+    huruf_besar = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    huruf_kecil = "abcdefghijklmnopqrstuvwxyz"
+    return f"//*[contains(translate(text(), '{huruf_besar}', '{huruf_kecil}'), '{frasa.lower()}')]"
+
+
 MEDAN_BERKAS = [
     (By.ID, "file_submission_attachment"),
     (By.CSS_SELECTOR, "input[type='file'][name='attachment']"),
@@ -19,15 +27,15 @@ MEDAN_BERKAS = [
 TOMBOL_FILE_PICKER = [
     (By.CSS_SELECTOR, "a[href*='filemanager']"),
     (By.CSS_SELECTOR, ".filepicker a"),
-    (By.XPATH, "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'file picker')]"),
-    (By.XPATH, "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'tambahkan berkas')]"),
-    (By.XPATH, "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add a file')]"),
+    (By.XPATH, _xpath_teks("file picker")),
+    (By.XPATH, _xpath_teks("tambahkan berkas")),
+    (By.XPATH, _xpath_teks("add a file")),
 ]
 TOMBOL_KIRIM = [
     (By.CSS_SELECTOR, "button[name='submitbutton']"),
     (By.CSS_SELECTOR, "input[name='submitbutton']"),
-    (By.XPATH, "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'kirim tugas')]"),
-    (By.XPATH, "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'submit assignment')]"),
+    (By.XPATH, _xpath_teks("kirim tugas")),
+    (By.XPATH, _xpath_teks("submit assignment")),
     (By.CSS_SELECTOR, "button[type='submit']"),
 ]
 PESAN_TOLAK = (
@@ -43,7 +51,12 @@ PESAN_TOLAK = (
     "terlalu besar",
     "maximum file size",
 )
-STATUS_TERKUMPUL = ("submitted for grading", "terkumpul", "telah dikumpulkan", "kirim tugas berhasil")
+STATUS_TERKUMPUL = (
+    "submitted for grading",
+    "terkumpul",
+    "telah dikumpulkan",
+    "kirim tugas berhasil",
+)
 
 
 class HalamanTugas:
@@ -54,9 +67,7 @@ class HalamanTugas:
     def buka(self, url: str | None = None) -> "HalamanTugas":
         target = url or self.konfigurasi.url_tugas
         if not target:
-            raise RuntimeError(
-                "URL halaman tugas belum diisi. Set SUNAN_URL_TUGAS di berkas .env."
-            )
+            raise RuntimeError("URL halaman tugas belum diisi. Set SUNAN_URL_TUGAS di berkas .env.")
         self.driver.get(target)
         return self
 
@@ -67,10 +78,10 @@ class HalamanTugas:
             pass
         try:
             tombol = cari_pertama(self.driver, TOMBOL_FILE_PICKER, batas=5)
-        except ElemenTidakDitemukan as galat:
+        except ElemenTidakDitemukan as error:
             raise ElemenTidakDitemukan(
                 "Medan berkas tidak ditemukan dan tombol file picker tidak ditemukan."
-            ) from galat
+            ) from error
         tombol.click()
         return cari_pertama(self.driver, MEDAN_BERKAS, batas=5)
 
@@ -86,9 +97,7 @@ class HalamanTugas:
             return False
         tombol.click()
         try:
-            WebDriverWait(self.driver, self.konfigurasi.waktu_tunggu).until(
-                EC.staleness_of(tombol)
-            )
+            WebDriverWait(self.driver, self.konfigurasi.waktu_tunggu).until(EC.staleness_of(tombol))
         except TimeoutException:
             pass
         return True

@@ -1,4 +1,4 @@
-"""Penyiapan berkas uji: PDF valid, batas ukuran, berkas kosong, dan berkas terlarang."""
+# Berkas uji: PDF valid, batas ukuran, berkas kosong, dan berkas terlarang.
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ NAMA_BERKAS = {
 
 
 def _bangun_pdf(padding: int) -> bytes:
-    """Susun satu PDF valid; argumen padding menambah ukuran berkas."""
+    # Padding menambah ukuran berkas tanpa merusak struktur PDF.
     isi = b"BT /F1 16 Tf 72 780 Td (Bahan uji upload Sunan UMK) Tj ET\n"
     if padding > 1:
         isi += b"%" + b" " * (padding - 2) + b"\n"
@@ -48,7 +48,7 @@ def _bangun_pdf(padding: int) -> bytes:
 
 
 def pdf_seukuran(ukuran_byte: int) -> bytes:
-    """PDF valid dengan ukuran persis ukuran_byte."""
+    # Padding dihitung ulang sampai ukuran akhirnya pas.
     if ukuran_byte < 1400:
         raise ValueError("Ukuran PDF minimal 1400 byte")
     padding = ukuran_byte - 1400
@@ -64,7 +64,6 @@ def pdf_seukuran(ukuran_byte: int) -> bytes:
 
 
 def siapkan_berkas(folder: Path, batas_mb: int = 5) -> dict[str, Path]:
-    """Buat seluruh berkas uji bila belum ada, lalu kembalikan petanya."""
     folder.mkdir(parents=True, exist_ok=True)
     batas = batas_mb * 1024 * 1024
     target = {kunci: folder / nama for kunci, nama in NAMA_BERKAS.items()}
