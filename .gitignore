@@ -1,1 +1,10 @@
 *.docx
+hasil/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+berkas/*.pdf
+berkas/*.bin
+berkas/*.exe
+berkas/duplikat/
