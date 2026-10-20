@@ -1,6 +1,6 @@
 # Titik eksekusi pengujian otomatis website e-learning Sunan UMK.
 #
-# Perintah yang dipakai:
+# Perintah yang bisa dipakai:
 # python main.py                 semua test case otomatis di semua browser
 # python main.py --headed        tampilkan browser (perlu bila ada CAPTCHA)
 # python main.py --login-manual  login sendiri di jendela browser
@@ -24,7 +24,7 @@ if str(AKAR) not in sys.path:
 from src.browser import cari_biner
 from src.data_uji import siapkan_berkas
 from src.konfigurasi import ambil_benar, bangun_konfigurasi
-from src.pelapor import siapkan_log, tulis_laporan
+from src.pelapor import baca_hasil, siapkan_log, tulis_laporan
 from src.uji.panduan_manual import cetak_panduan, skenario_manual
 
 DAFTAR_TEST_CASE = [
@@ -39,6 +39,7 @@ DAFTAR_TEST_CASE = [
     ("TC-TGS-06", "Mengirim dua berkas dengan nama yang sama", "manual"),
     ("TC-AKS-01", "Mahasiswa membuka halaman penilaian", "manual"),
 ]
+GARIS = "=" * 66
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,6 +72,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def terapkan_override(args: argparse.Namespace) -> None:
+    # Nilai dari baris perintah lebih tinggi prioritasnya daripada berkas .env.
     pasangan = {
         "SUNAN_URL": args.url,
         "SUNAN_PENGGUNA": args.pengguna,
@@ -89,6 +91,7 @@ def terapkan_override(args: argparse.Namespace) -> None:
 
 
 def kunci_pilihan(daftar_id: str) -> str:
+    # Mengubah daftar ID test case menjadi penapis pytest (-k).
     kunci = []
     for id_uji in daftar_id.split(","):
         id_uji = id_uji.strip().lower()
@@ -98,6 +101,7 @@ def kunci_pilihan(daftar_id: str) -> str:
 
 
 def pisahkan_pilihan(daftar_id: str) -> tuple[list[str], list[str]]:
+    # Memisahkan ID pilihan menjadi yang dikerjakan otomatis dan yang manual.
     otomatis, manual = [], []
     for id_uji in (bagian.strip().upper() for bagian in daftar_id.split(",")):
         if not id_uji:
@@ -113,19 +117,43 @@ def pisahkan_pilihan(daftar_id: str) -> tuple[list[str], list[str]]:
 def cetak_daftar() -> None:
     print()
     print("DAFTAR TEST CASE")
-    print("=" * 72)
+    print(GARIS)
     for id_uji, skenario, cara in DAFTAR_TEST_CASE:
-        print(f"{id_uji} | {cara:<7} | {skenario}")
-    print("=" * 72)
+        print(f"{id_uji} | {cara:<8} | {skenario}")
+    print(GARIS)
+
+
+def cetak_kepala(konfigurasi) -> None:
+    mode = "headless" if konfigurasi.headless else "headful"
+    print()
+    print(GARIS)
+    print("PENGUJIAN OTOMATIS - SUNAN UMK")
+    print(f"  situs    : {konfigurasi.url}")
+    print(f"  browser  : {', '.join(konfigurasi.browser)}")
+    print(f"  mode     : {mode}")
+    print(GARIS)
 
 
 def jalankan_pytest(konfigurasi, nama_browser: str, otomatis: list[str]) -> int:
     junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
-    perintah = [sys.executable, "-m", "pytest", "src/uji", "-ra", f"--junitxml={junit}"]
+    perintah = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "src/uji",
+        "-q",
+        "-s",
+        "--no-header",
+        "-p",
+        "no:cacheprovider",
+        f"--junitxml={junit}",
+    ]
     if otomatis:
         perintah += ["-k", kunci_pilihan(",".join(otomatis))]
     lingkungan = dict(os.environ, BROWSER_UJI=nama_browser)
-    selesai = subprocess.run(perintah, cwd=AKAR, env=lingkungan)
+    catatan = konfigurasi.folder_hasil / f"pytest_{nama_browser}.log"
+    with catatan.open("w", encoding="utf-8") as keluaran:
+        selesai = subprocess.run(perintah, cwd=AKAR, env=lingkungan, stdout=keluaran)
     return selesai.returncode
 
 
@@ -143,21 +171,22 @@ def main() -> int:
     os.chdir(AKAR)
 
     konfigurasi = bangun_konfigurasi()
-    logger = siapkan_log(konfigurasi.folder_hasil)
+    logger = siapkan_log(konfigurasi.folder_hasil, ke_konsol=False)
     siapkan_berkas(konfigurasi.folder_berkas, konfigurasi.batas_unggah_mb)
 
     if args.buat_berkas:
         logger.info("Berkas uji siap di %s", konfigurasi.folder_berkas)
+        print(f"Berkas uji siap di {konfigurasi.folder_berkas}")
         return 0
 
     if not konfigurasi.punya_kredensial and not ambil_benar("LOGIN_MANUAL", False):
-        logger.warning(
-            "Kredensial akun mahasiswa belum diisi, seluruh skenario akan dilewati. "
-            "Isi SUNAN_PENGGUNA dan SUNAN_SANDI di berkas .env, "
-            "atau pakai --login-manual."
-        )
+        print()
+        print("Catatan: kredensial akun mahasiswa belum diisi, skenario akan dilewati.")
+        print("        Isi SUNAN_PENGGUNA dan SUNAN_SANDI di berkas .env,")
+        print("        atau jalankan dengan --login-manual.")
     if not konfigurasi.url_tugas:
-        logger.warning("SUNAN_URL_TUGAS belum diisi, uji unggah berkas tidak dapat dijalankan.")
+        print("Catatan: SUNAN_URL_TUGAS belum diisi, uji unggah berkas tidak bisa jalan.")
+    print()
 
     otomatis, manual = ([], [])
     if args.pilih:
@@ -167,29 +196,53 @@ def main() -> int:
         if not otomatis:
             return 0
 
+    cetak_kepala(konfigurasi)
     kode_keluar = 0
-    for nama_browser in konfigurasi.browser:
+    rekap = []
+    total = len(konfigurasi.browser)
+
+    for nomor, nama_browser in enumerate(konfigurasi.browser, start=1):
         os.environ["BROWSER_UJI"] = nama_browser
         biner = cari_biner(nama_browser, konfigurasi)
-        logger.info(
-            "Menjalankan pengujian dengan %s (browser: %s)",
-            nama_browser,
-            biner or "tidak ditemukan, mengandalkan Selenium Manager",
-        )
+        print(f"[{nomor}/{total}] {nama_browser}")
+        sys.stdout.flush()
 
-        junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
         kode = jalankan_pytest(konfigurasi, nama_browser, otomatis)
         kode_keluar = kode_keluar or kode
+
+        junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
+        jumlah = baca_hasil(junit)
         tulis_laporan(junit, konfigurasi.folder_hasil, konfigurasi, nama_browser, biner)
+        rekap.append((nama_browser, jumlah))
+        print(
+            f"        {jumlah['lulus']} lulus  {jumlah['gagal']} gagal  "
+            f"{jumlah['dilewati']} dilewati   ->  hasil/laporan_{nama_browser}.txt"
+        )
 
     laporan_gabungan = _gabungkan_laporan(konfigurasi)
     print()
-    print(laporan_gabungan.read_text(encoding="utf-8"))
-    print(f"Laporan tersimpan di {laporan_gabungan}")
+    print(GARIS)
+    print("RINGKASAN")
+    for nama_browser, jumlah in rekap:
+        print(
+            f"  {nama_browser:<8} {jumlah['lulus']} lulus  {jumlah['gagal']} gagal  "
+            f"{jumlah['dilewati']} dilewati"
+        )
+    jumlah_total = {"lulus": 0, "gagal": 0, "dilewati": 0}
+    for _, jumlah in rekap:
+        for kunci, nilai in jumlah.items():
+            jumlah_total[kunci] += nilai
+    print(
+        f"  {'total':<8} {jumlah_total['lulus']} lulus  {jumlah_total['gagal']} gagal  "
+        f"{jumlah_total['dilewati']} dilewati"
+    )
+    print(GARIS)
+    print(f"Laporan lengkap: {laporan_gabungan}")
     return int(kode_keluar)
 
 
 def _gabungkan_laporan(konfigurasi) -> Path:
+    # Menyatukan laporan per browser menjadi satu berkas ringkasan.
     folder = konfigurasi.folder_hasil
     bagian = []
     for nama_browser in konfigurasi.browser:

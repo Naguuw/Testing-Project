@@ -7,7 +7,9 @@ from datetime import datetime
 from pathlib import Path
 
 
-def siapkan_log(folder: Path, nama_berkas: str = "pengujian.log") -> logging.Logger:
+def siapkan_log(
+    folder: Path, nama_berkas: str = "pengujian.log", ke_konsol: bool = True
+) -> logging.Logger:
     folder.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("uji")
     logger.setLevel(logging.INFO)
@@ -15,13 +17,30 @@ def siapkan_log(folder: Path, nama_berkas: str = "pengujian.log") -> logging.Log
     logger.propagate = False
 
     format_log = logging.Formatter("%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
-    konsol = logging.StreamHandler()
-    konsol.setFormatter(format_log)
+    if ke_konsol:
+        konsol = logging.StreamHandler()
+        konsol.setFormatter(format_log)
+        logger.addHandler(konsol)
     berkas = logging.FileHandler(folder / nama_berkas, encoding="utf-8")
     berkas.setFormatter(format_log)
-    logger.addHandler(konsol)
     logger.addHandler(berkas)
     return logger
+
+
+def baca_hasil(junit: Path) -> dict[str, int]:
+    # Menghitung jumlah lulus, gagal, dan dilewati dari JUnit XML.
+    jumlah = {"lulus": 0, "gagal": 0, "dilewati": 0}
+    if not junit.exists():
+        return jumlah
+    pohon = ET.parse(junit).getroot()
+    for tes in pohon.iter("testcase"):
+        if tes.find("skipped") is not None:
+            jumlah["dilewati"] += 1
+        elif tes.find("failure") is not None or tes.find("error") is not None:
+            jumlah["gagal"] += 1
+        else:
+            jumlah["lulus"] += 1
+    return jumlah
 
 
 def simpan_tangkapan(driver, folder: Path, nama: str) -> Path:
@@ -49,7 +68,7 @@ def tulis_laporan(
         "",
     ]
 
-    jumlah = {"lulus": 0, "gagal": 0, "dilewati": 0}
+    jumlah = baca_hasil(junit)
     if junit.exists():
         pohon = ET.parse(junit).getroot()
         for tes in pohon.iter("testcase"):
@@ -58,21 +77,17 @@ def tulis_laporan(
             dilewati = tes.find("skipped")
             if dilewati is not None:
                 status = "dilewati"
-                jumlah["dilewati"] += 1
                 alasan = dilewati.get("message", "") or ""
             elif salah is not None:
                 status = "gagal"
-                jumlah["gagal"] += 1
                 alasan = (salah.get("message", "") or "").strip().splitlines()[:1]
                 alasan = alasan[0] if alasan else ""
             else:
                 status = "lulus"
-                jumlah["lulus"] += 1
                 alasan = ""
             baris.append(f"[{status.upper():<8}] {nama}")
             if alasan:
                 baris.append(f"           {alasan}")
-
     total = sum(jumlah.values())
     baris += [
         "",
