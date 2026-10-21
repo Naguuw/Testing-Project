@@ -16,8 +16,7 @@ Ini Folder Ygy
 ├── .env                     konfigurasi lokal
 ├── .env.example             contoh konfigurasi
 ├── .gitignore
-├── berkas/                  berkas uji, dibuat otomatis
-│   ├── README.md
+├── berkas/                  folder kerja, dibuat otomatis
 │   ├── materi_valid.pdf         PDF biasa untuk uji upload berhasil
 │   ├── materi_batas_bawah.pdf   satu byte di bawah batas ukuran
 │   ├── materi_batas_tepat.pdf   tepat pada batas ukuran
@@ -155,6 +154,38 @@ python main.py --daftar                   tampilkan daftar test case
 Bila browser yang dipilih tidak terpasang di sistem, isi `BINER_*` dan
 `DRIVER_*` di `.env` dengan lokasi berkasnya.
 
+## Menguji Berkas Sendiri
+
+Folder `berkas/` adalah folder kerja. Taruh berkas apa pun di sana, semuanya
+ikut diuji oleh TC-TGS-01:
+
+```
+berkas/
+├── Test.pdf                    berkas custom, ikut diuji
+├── catatan.txt                 berkas di luar aturan situs, harus ditolak
+└── materi_valid.pdf            berkas uji standar
+```
+
+Hasil tiap berkas dibandingkan dengan aturan upload yang berlaku di situs:
+ekstensi .doc, .docx, .pdf, atau .rtf, ukuran maksimal 20 MB, dan berkas tidak
+boleh kosong. Kalau berkasmu ditolak, pesannya muncul di laporan.
+
+Empat berkas uji standar punya test case sendiri, jadi tidak ikut dipindai
+TC-TGS-01:
+
+| Berkas | Dipakai pada | Keterangan |
+|---|---|---|
+| `materi_valid.pdf` | TC-TGS-01 | PDF normal untuk uji upload berhasil |
+| `materi_batas_bawah.pdf` | TC-TGS-02 | Ukuran satu byte di bawah batas (5.242.879 byte) |
+| `materi_batas_tepat.pdf` | TC-TGS-02 | Ukuran tepat pada batas (5.242.880 byte) |
+| `berkas_0_byte.bin` | TC-TGS-03 | Berkas kosong, harus ditolak sistem |
+| `berkas_ilegal.exe` | TC-TGS-05 | Berkas tiruan berekstensi terlarang, aman untuk dijalankan |
+| `duplikat/satu/materi.pdf` | TC-TGS-06 | Dua berkas bernama sama, dipakai uji manual |
+| `duplikat/dua/materi.pdf` | TC-TGS-06 | Dua berkas bernama sama, dipakai uji manual |
+
+Folder `berkas/` dan `hasil/` tidak ikut ter-commit. Keduanya dibuat ulang
+setiap kali pengujian berjalan.
+
 ## Cara Kerja Upload Berkas
 
 Moodle memakai modal **File picker**, jadi uploadan berjalan berjenjang:
@@ -212,7 +243,7 @@ disimpan, jadi skenario berikutnya tidak perlu mencocokkan CAPTCHA lagi.
 |---|---|
 | TC-LGN-01 | Login dengan kredensial valid |
 | TC-LGN-02 | Login dengan kredensial tidak valid |
-| TC-TGS-01 | Upload tugas format PDF valid |
+| TC-TGS-01 | Upload setiap berkas di folder berkas |
 | TC-TGS-02 | Ukuran di bawah dan tepat pada batas |
 | TC-TGS-03 | Berkas kosong (0 byte) |
 | TC-TGS-05 | Format tidak diizinkan |

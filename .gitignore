@@ -1,12 +1,15 @@
-*.docx
+# Konfigurasi lokal, jangan ikut dibagikan
 .env
+
+# Folder kerja dan keluaran, isinya dibuat sendiri saat pengujian berjalan
+berkas/
+hasil/
+
+# Python
 __pycache__/
 *.pyc
 .pytest_cache/
-hasil/*
-!hasil/.gitkeep
-berkas/*.pdf
-berkas/*.bin
-berkas/*.exe
-berkas/duplikat/satu/*.pdf
-berkas/duplikat/dua/*.pdf
+.venv/
+
+# Dokumen sumber
+*.docx

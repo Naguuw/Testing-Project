@@ -22,7 +22,7 @@ if str(AKAR) not in sys.path:
     sys.path.insert(0, str(AKAR))
 
 from src.browser import cari_biner
-from src.data_uji import siapkan_berkas
+from src.data_uji import daftar_berkas_upload, siapkan_berkas
 from src.konfigurasi import ambil_benar, bangun_konfigurasi
 from src.pelapor import baca_hasil, siapkan_log, tulis_laporan
 from src.uji.panduan_manual import cetak_panduan, skenario_manual
@@ -125,12 +125,17 @@ def cetak_daftar() -> None:
 
 def cetak_kepala(konfigurasi) -> None:
     mode = "headless" if konfigurasi.headless else "headful"
+    daftar = daftar_berkas_upload(konfigurasi.folder_berkas)
     print()
     print(GARIS)
     print("PENGUJIAN OTOMATIS - SUNAN UMK")
     print(f"  situs    : {konfigurasi.url}")
     print(f"  browser  : {', '.join(konfigurasi.browser)}")
     print(f"  mode     : {mode}")
+    print(f"  berkas   : {len(daftar)} berkas di folder berkas")
+    for berkas in daftar:
+        ukuran = berkas.stat().st_size
+        print(f"              {berkas.name} ({ukuran} byte)")
     print(GARIS)
 
 

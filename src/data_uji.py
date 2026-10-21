@@ -13,6 +13,14 @@ NAMA_BERKAS = {
     "duplikat_dua": "duplikat/dua/materi.pdf",
 }
 
+# Berkas ini punya test case sendiri, jadi tidak ikut dipindai oleh TC-TGS-01.
+BERKAS_KHUSUS = (
+    "materi_batas_bawah.pdf",
+    "materi_batas_tepat.pdf",
+    "berkas_0_byte.bin",
+    "berkas_ilegal.exe",
+)
+
 
 def _bangun_pdf(padding: int) -> bytes:
     # Padding menambah ukuran berkas tanpa merusak struktur PDF.
@@ -86,3 +94,14 @@ def siapkan_berkas(folder: Path, batas_mb: int = 5) -> dict[str, Path]:
             berkas.write_bytes(pdf_seukuran(1500))
 
     return target
+
+
+def daftar_berkas_upload(folder: Path) -> list[Path]:
+    # Semua berkas di folder berkas ikut diuji, kecuali berkas yang punya kasus sendiri.
+    if not folder.exists():
+        return []
+    return sorted(
+        berkas
+        for berkas in folder.iterdir()
+        if berkas.is_file() and berkas.name != "README.md" and berkas.name not in BERKAS_KHUSUS
+    )

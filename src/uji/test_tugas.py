@@ -1,9 +1,16 @@
 # Test case pengumpulan tugas: TC-TGS-01, TC-TGS-02, TC-TGS-03, dan TC-TGS-05.
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
+from src.data_uji import daftar_berkas_upload
 from src.halaman.tugas import HalamanTugas
+
+# Aturan unggah yang berlaku di situs: ekstensi ini, maksimal 20 MB, dan tidak boleh kosong.
+EKSTENSI_DITERIMA = (".doc", ".docx", ".pdf", ".rtf")
+BATAS_UKURAN_SITUS = 20 * 1024 * 1024
 
 
 @pytest.fixture(scope="module")
@@ -11,13 +18,29 @@ def halaman_tugas(browser, konfigurasi, sesi_mahasiswa):
     return HalamanTugas(browser, konfigurasi)
 
 
+def _situs_menerima(berkas: Path) -> bool:
+    # Harapan mengikuti aturan situs, bukan tebakan.
+    ukuran = berkas.stat().st_size
+    return berkas.suffix.lower() in EKSTENSI_DITERIMA and 0 < ukuran <= BATAS_UKURAN_SITUS
+
+
 @pytest.mark.tgs
-def test_tc_tgs_01_upload_pdf_valid(halaman_tugas, berkas):
-    # TC-TGS-01: PDF valid diterima dan terlampir di area Files.
-    halaman_tugas.buka()
-    hasil = halaman_tugas.upload(berkas["pdf_valid"])
-    assert hasil.diterima, f"PDF valid seharusnya diterima: {hasil.pesan}"
-    assert hasil.nama_terupload, "Nama berkas tidak tampil di area Files"
+def test_tc_tgs_01_upload_berkas_di_folder(halaman_tugas, konfigurasi):
+    # TC-TGS-01: setiap berkas di folder berkas diunggah, lalu hasilnya
+    # dibandingkan dengan aturan unggah yang berlaku di situs.
+    daftar = daftar_berkas_upload(konfigurasi.folder_berkas)
+    if not daftar:
+        pytest.skip("Folder berkas kosong, tidak ada berkas untuk diuji.")
+
+    for berkas in daftar:
+        halaman_tugas.buka()
+        hasil = halaman_tugas.upload(berkas)
+        if _situs_menerima(berkas):
+            assert hasil.diterima, f"{berkas.name} seharusnya diterima: {hasil.pesan}"
+            assert hasil.nama_terupload, f"Nama {berkas.name} tidak tampil di area Files"
+        else:
+            assert not hasil.diterima, f"{berkas.name} seharusnya ditolak, tapi diterima"
+            assert hasil.pesan, f"{berkas.name} ditolak tanpa pesan yang jelas"
 
 
 @pytest.mark.tgs
