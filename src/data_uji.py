@@ -1,5 +1,4 @@
 # Berkas uji: PDF valid, batas ukuran, berkas kosong, dan berkas terlarang.
-
 from __future__ import annotations
 
 from pathlib import Path

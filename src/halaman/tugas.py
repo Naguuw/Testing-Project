@@ -1,48 +1,35 @@
-# Halaman tugas: buka file picker, unggah berkas, simpan, dan baca status.
-
+# Halaman tugas: buka file picker, upload berkas, dan cek hasilnya.
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from selenium.common.exceptions import (
     ElementNotInteractableException,
-    NoSuchElementException,
-    TimeoutException,
     WebDriverException,
 )
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
-from .dasar import (
-    ElemenTidakDitemukan,
-    cari_pertama,
-    cari_teks,
-    teks_halaman,
-    xpath_teks,
-)
+from .dasar import ElemenTidakDitemukan, cari_elemen, teks_halaman, xpath_teks
 
-# Id dari Moodle (yui_..._822) berubah tiap halaman, jadiselector pakai name dan class.
+# Id dari Moodle (yui_..._822) berubah tiap halaman, jadi selector pakai name dan class.
 MEDAN_BERKAS = [
     (By.CSS_SELECTOR, "input[name='repo_upload_file']"),
     (By.ID, "file_submission_attachment"),
     (By.CSS_SELECTOR, "input[type='file'][name='attachment']"),
     (By.CSS_SELECTOR, "input[type='file']"),
 ]
-MEDAN_SAVE_AS = [
-    (By.CSS_SELECTOR, "input[name='title']"),
-]
-TOMBOL_UPLOAD_MODAL = [
-    (By.CSS_SELECTOR, "button.fp-upload-btn"),
-]
-PEMICU_FILE_PICKER = [
-    (By.CSS_SELECTOR, ".form-control-file button"),
-    (By.CSS_SELECTOR, "button.filepicker"),
-    (By.CSS_SELECTOR, "a.filepicker"),
-    (By.XPATH, xpath_teks("file picker")),
-    (By.XPATH, xpath_teks("choose file")),
-    (By.XPATH, xpath_teks("pilih berkas")),
+MEDAN_SAVE_AS = "input[name='title']"
+TOMBOL_UPLOAD_MODAL = "button.fp-upload-btn"
+# Pemicu dari DOM asli: tombol "Add..." di toolbar file manager tugas.
+PEMICU_UPLOAD = [
+    (By.XPATH, "//i[contains(@class,'fa-file-o')]/parent::a"),
+    (By.XPATH, "//a[@title='Add...']"),
+    (By.XPATH, "//a[@title='Tambahkan...']"),
+    (By.CSS_SELECTOR, ".fm-empty-container .dndupload-message"),
+    (By.CSS_SELECTOR, ".dndupload-message"),
+    (By.CSS_SELECTOR, ".fm-empty-container"),
 ]
 TAB_UPLOAD = [
     (
@@ -55,40 +42,38 @@ TAB_UPLOAD = [
         By.XPATH,
         "//span[contains(@class,'fp-repo-name') and "
         "contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
-        "'unggah berkas')]/parent::a",
+        "'upload berkas')]/parent::a",
     ),
-]
-TOMBOL_SIMPAN = [
-    (By.CSS_SELECTOR, "button[name='submitbutton']"),
-    (By.CSS_SELECTOR, "input[name='submitbutton']"),
-    (By.XPATH, xpath_teks("save changes")),
-    (By.XPATH, xpath_teks("simpan perubahan")),
-    (By.CSS_SELECTOR, "button[type='submit']"),
-]
-TOMBOL_KIRIM_FINAL = [
-    (By.XPATH, xpath_teks("submit assignment")),
-    (By.XPATH, xpath_teks("kirim tugas")),
 ]
 PESAN_TOLAK = (
     "not allowed",
-    "file type",
-    "format",
     "unsupported",
     "extension",
     "too large",
     "terlalu besar",
-    "maximum file size",
+    "is empty",
+    "cannot be uploaded",
     "tidak diizinkan",
     "tidak didukung",
 )
-STATUS_TERKUMPUL = (
-    "submitted for grading",
-    "draft submission",
-    "terkumpul",
-    "telah dikumpulkan",
-    "kirim tugas berhasil",
+# Baris halaman yang selalu ada, jadi tidak boleh dianggap pesan error.
+TEKS_BUKAN_ERROR = (
+    "accepted file types",
+    "maximum file size",
+    "document files",
+    "pdf document",
+    "you can drag and drop",
+    "file exists",
+    "sudah ada",
 )
-STATUS_KOSONG = ("no file submitted", "belum ada berkas", "not submitted")
+
+
+@dataclass
+class HasilUpload:
+    # Diterima berarti berkas lolos dari tombol Upload this file.
+    diterima: bool
+    pesan: str = ""
+    nama_terupload: str = ""
 
 
 class HalamanTugas:
@@ -100,18 +85,18 @@ class HalamanTugas:
         target = url or self.konfigurasi.url_tugas
         if not target:
             raise RuntimeError("URL halaman tugas belum diisi. Set SUNAN_URL_TUGAS di berkas .env.")
-        # Tanpa action=editsubmission Moodle hanya menampilkan status, bukan form unggah.
+        # Tanpa action=editsubmission Moodle hanya menampilkan status, bukan form upload.
         if "action=" not in target:
             target = f"{target}{'&' if '?' in target else '?'}action=editsubmission"
         self.driver.get(target)
         return self
 
     def _klik(self, kandidat, batas: int = 8) -> bool:
-        try:
-            tombol = cari_pertama(self.driver, kandidat, batas=batas)
-        except ElemenTidakDitemukan:
+        tombol = cari_elemen(self.driver, kandidat, batas=batas)
+        if tombol is None:
             return False
         try:
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", tombol)
             tombol.click()
             return True
         except (ElementNotInteractableException, WebDriverException):
@@ -133,20 +118,91 @@ class HalamanTugas:
         )
         medan.send_keys(str(berkas))
 
-    def _medan_berkas(self):
-        return cari_pertama(self.driver, MEDAN_BERKAS, batas=5)
+    def _picker_terlihat(self):
+        # Halaman tugas punya beberapa file picker, yang dipakai yang terlihat.
+        for elemen in self.driver.find_elements(By.CSS_SELECTOR, ".file-picker"):
+            if elemen.is_displayed():
+                return elemen
+        return None
+
+    def _di_dalam(self, wadah, selector: str):
+        for elemen in wadah.find_elements(By.CSS_SELECTOR, selector):
+            return elemen
+        return None
+
+    def _nama_berkas_di_picker(self, picker, nama: str) -> str:
+        # Berkas yang berhasil diupload muncul di daftar Recent files.
+        awalan = nama[:10].lower()
+        for elemen in picker.find_elements(By.CSS_SELECTOR, "a, .filename, .file-name"):
+            teks = (elemen.text or "").strip()
+            alamat = elemen.get_attribute("href") or ""
+            if nama.lower() in alamat.lower():
+                return teks or nama
+            if teks and awalan in teks.lower():
+                return teks
+        return ""
+
+    def _tunggu_halaman_siap(self, batas: int = 20) -> None:
+        # Modul Moodle dimuat lewat AMD, jadi penangan klik belum tentu terpasang.
+        akhir = time.monotonic() + batas
+        while time.monotonic() < akhir:
+            siap = self.driver.execute_script("return document.readyState === 'complete'")
+            ada_pemicu = bool(
+                self.driver.find_elements(By.CSS_SELECTOR, ".dndupload-message")
+            ) or bool(self.driver.find_elements(By.CSS_SELECTOR, "i.fa-file-o"))
+            if siap and ada_pemicu:
+                time.sleep(1)
+                return
+            time.sleep(0.5)
+
+    def _klik_pemicu(self) -> bool:
+        # Klik lewat JS dulu karena penangan Moodle terikat di JS dan tombol
+        # "Add..." hanya berisi ikon tanpa teks.
+        hasil = self.driver.execute_script(
+            "var el = document.querySelector('i.fa-file-o');"
+            "if (el) { el = el.parentElement; }"
+            "if (!el) { el = document.querySelector(\"a[title='Add...']\"); }"
+            "if (!el) { el = document.querySelector('.fm-empty-container .dndupload-message'); }"
+            "if (el) { el.click(); return true; }"
+            "return false;"
+        )
+        if hasil:
+            return True
+        for strategi, selector in PEMICU_UPLOAD:
+            for elemen in self.driver.find_elements(strategi, selector):
+                try:
+                    elemen.click()
+                    return True
+                except (ElementNotInteractableException, WebDriverException):
+                    continue
+        return False
+
+    def _tunggu_modal(self, detik: int = 15) -> bool:
+        batas = time.monotonic() + detik
+        while time.monotonic() < batas:
+            for elemen in self.driver.find_elements(By.CSS_SELECTOR, ".file-picker"):
+                if elemen.is_displayed():
+                    return True
+            time.sleep(0.5)
+        return False
+
+    def _pindah_ke_jendela_baru(self, jendela_awal: list[str]) -> None:
+        # File picker kadang terbuka di jendela terpisah.
+        baru = [handle for handle in self.driver.window_handles if handle not in jendela_awal]
+        if baru:
+            self.driver.switch_to.window(baru[-1])
 
     def _buka_file_picker(self) -> bool:
-        # Modal file picker Moodle memuat form upload di dalam dialog.
-        if not self._klik(PEMICU_FILE_PICKER):
-            return False
-        try:
-            WebDriverWait(self.driver, self.konfigurasi.waktu_tunggu).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, ".file-picker"))
-            )
-        except (TimeoutException, WebDriverException):
-            return False
-        return True
+        # Diklik berkali-kali karena penangan Moodle bisa belum terpasang.
+        self._tunggu_halaman_siap()
+        jendela_awal = list(self.driver.window_handles)
+        for _ in range(5):
+            self._klik_pemicu()
+            if self._tunggu_modal(3):
+                self._pindah_ke_jendela_baru(jendela_awal)
+                return True
+            time.sleep(1)
+        return False
 
     def _ke_dalam_frame(self) -> None:
         # Sebagian versi Moodle memuat isi file picker lewat iframe.
@@ -156,14 +212,11 @@ class HalamanTugas:
                 self.driver.switch_to.frame(bingkai)
                 return
 
-    def _pilih_tab_upload(self) -> None:
-        self._klik(TAB_UPLOAD, batas=5)
-        time.sleep(0.5)
-
-    def _isi_save_as(self, nama: str) -> None:
-        try:
-            medan = cari_pertama(self.driver, MEDAN_SAVE_AS, batas=5)
-        except ElemenTidakDitemukan:
+    def _isi_save_as(self, picker, nama: str) -> None:
+        medan = self._di_dalam(picker, MEDAN_SAVE_AS) if picker else None
+        if medan is None:
+            medan = cari_elemen(self.driver, [(By.CSS_SELECTOR, MEDAN_SAVE_AS)], batas=5)
+        if medan is None:
             return
         try:
             medan.clear()
@@ -171,102 +224,107 @@ class HalamanTugas:
         except (ElementNotInteractableException, WebDriverException):
             pass
 
-    def unggah(self, berkas: Path) -> str:
-        # Jalur langsung: medan file ada di halaman tugas.
-        try:
-            medan = self._medan_berkas()
-        except ElemenTidakDitemukan:
-            medan = None
-        if medan is not None:
-            self._kirim_berkas(medan, berkas)
-            return berkas.name
-
-        # Jalur lewat modal File picker: Upload a file -> pilih berkas -> Upload this file.
+    def upload(self, berkas: Path) -> HasilUpload:
         if not self._buka_file_picker():
-            raise ElemenTidakDitemukan(
-                "Medan upload berkas tidak ditemukan dan file picker tidak bisa dibuka."
-            )
+            raise ElemenTidakDitemukan("File picker tidak terbuka di halaman tugas.")
         self._ke_dalam_frame()
-        self._pilih_tab_upload()
-        medan = self._medan_berkas()
-        self._kirim_berkas(medan, berkas)
-        self._isi_save_as(berkas.name)
-        self._klik(TOMBOL_UPLOAD_MODAL, batas=10)
-        self._tunggu_nama_berkas(berkas.name)
-        return berkas.name
 
-    def _tunggu_nama_berkas(self, nama: str, batas: int = 20) -> bool:
+        picker = self._picker_terlihat()
+        if picker is not None:
+            self._klik(TAB_UPLOAD, batas=5)
+            time.sleep(0.5)
+            medan = self._di_dalam(picker, "input[name='repo_upload_file']")
+        else:
+            medan = cari_elemen(self.driver, MEDAN_BERKAS, batas=5)
+
+        if medan is None:
+            raise ElemenTidakDitemukan("Medan Choose File tidak ditemukan di file picker.")
+
+        self._kirim_berkas(medan, berkas)
+        self._isi_save_as(picker, berkas.name)
+
+        if picker is not None:
+            tombol = self._di_dalam(picker, TOMBOL_UPLOAD_MODAL)
+            if tombol is not None:
+                try:
+                    tombol.click()
+                except (ElementNotInteractableException, WebDriverException):
+                    pass
+        else:
+            self._klik([(By.CSS_SELECTOR, TOMBOL_UPLOAD_MODAL)], batas=10)
+
+        return self._tunggu_hasil_upload(berkas.name, picker)
+
+    def _tunggu_hasil_upload(self, nama: str, picker=None, batas: int | None = None) -> HasilUpload:
+        # Tombol Upload this file yang menentukan berkas diterima atau ditolak.
+        batas = batas or self.konfigurasi.waktu_upload
         akhir = time.monotonic() + batas
         while time.monotonic() < akhir:
-            if nama.lower() in teks_halaman(self.driver).lower():
-                return True
-            time.sleep(0.5)
-        return False
-
-    def nama_berkas_terunggah(self) -> str:
-        for selector in (
-            ".filename a",
-            ".filename",
-            ".file-name",
-            ".queue .filename",
-            "a[href*='pluginfile']",
-        ):
-            for elemen in self.driver.find_elements(By.CSS_SELECTOR, selector):
-                teks = (elemen.text or "").strip()
-                if teks:
-                    return teks
-        return ""
-
-    def kirim(self) -> bool:
-        # Tombol Save changes menyimpan berkas, tombol submit menutup pengiriman.
-        if not self._klik(TOMBOL_SIMPAN):
-            return False
-        self._tunggu_halaman()
-        if self._klik(TOMBOL_KIRIM_FINAL):
-            self._tunggu_halaman()
-        return True
-
-    def _tunggu_halaman(self) -> None:
-        try:
-            WebDriverWait(self.driver, self.konfigurasi.waktu_tunggu).until(
-                EC.staleness_of(self.driver.find_element(By.TAG_NAME, "body"))
-            )
-        except (TimeoutException, NoSuchElementException, WebDriverException):
-            pass
-
-    def pesan_tolak(self) -> str:
-        pesan = cari_teks(self.driver, PESAN_TOLAK)
-        if pesan:
-            return pesan
-        for selector in (".alert-danger", ".invalid-feedback", "[role='alert']", ".alert"):
-            for elemen in self.driver.find_elements(By.CSS_SELECTOR, selector):
-                teks = (elemen.text or "").strip()
-                if teks:
-                    return teks
-        return ""
-
-    def sudah_terkumpul(self) -> bool:
-        isi = teks_halaman(self.driver).lower()
-        if any(penanda in isi for penanda in STATUS_TERKUMPUL):
-            return True
-        return bool(self.nama_berkas_terunggah()) and not any(
-            penanda in isi for penanda in STATUS_KOSONG
+            # Dialog File exists lebih dulu, itu bukan penolakan.
+            self._tangani_dialog_bentrok()
+            pesan = self.pesan_tolak()
+            if pesan:
+                return HasilUpload(diterima=False, pesan=pesan)
+            if picker is not None:
+                ditemukan = self._nama_berkas_di_picker(picker, nama)
+                if ditemukan:
+                    return HasilUpload(diterima=True, nama_terupload=ditemukan)
+            terupload = self.nama_berkas_terupload(nama)
+            if terupload:
+                return HasilUpload(diterima=True, nama_terupload=terupload)
+            time.sleep(1)
+        return HasilUpload(
+            diterima=False,
+            pesan="Tidak ada tanda berkas diterima maupun pesan penolakan setelah upload.",
         )
 
-    def simpan_dom(self, folder: Path) -> Path:
-        # Cuplikan DOM disimpan supaya selector bisa dibetulkan tanpa menebak.
-        folder.mkdir(parents=True, exist_ok=True)
-        bagian = []
-        for judul, selector in (
-            ("area unggah", ".form-control-file, .filemanager, .submission-form"),
-            ("modal file picker", ".file-picker"),
-            ("status pengumpulan", ".submissionsection, .submission-info, .alert-info"),
+    def nama_berkas_terupload(self, nama: str) -> str:
+        # Nama berkas yang tampil dipotong Moodle, jadi yang dicek adalah alamatnya.
+        for elemen in self.driver.find_elements(By.CSS_SELECTOR, "a[href]"):
+            alamat = elemen.get_attribute("href") or ""
+            if nama.lower() in alamat.lower():
+                return (elemen.text or "").strip() or nama
+        awalan = nama[:10].lower()
+        for elemen in self.driver.find_elements(
+            By.CSS_SELECTOR, ".filename a, .file-name, .fp-file a, .fnp-attachments a"
         ):
+            teks = (elemen.text or "").strip()
+            if teks and awalan in teks.lower():
+                return teks
+        return ""
+
+    def _tangani_dialog_bentrok(self) -> bool:
+        # Berkas dengan nama sama memunculkan dialog File exists.
+        for tombol in ("overwrite", "timpa", "ganti nama", "rename"):
+            elemen = cari_elemen(self.driver, [(By.XPATH, xpath_teks(tombol))], batas=2)
+            if elemen is None:
+                continue
+            try:
+                elemen.click()
+                return True
+            except (ElementNotInteractableException, WebDriverException):
+                continue
+        return False
+
+    def pesan_tolak(self) -> str:
+        # Pesan error Moodle muncul di dalam kotak alert.
+        for selector in (".alert-danger", ".invalid-feedback", "[role='alert']"):
             for elemen in self.driver.find_elements(By.CSS_SELECTOR, selector):
-                bagian.append(f"### {judul}\n{elemen.get_attribute('outerHTML')}\n")
-                break
-        for elemen in self.driver.find_elements(By.CSS_SELECTOR, "[role='alert'], .alert, .invalid-feedback"):
-            bagian.append(f"### pesan\n{elemen.get_attribute('outerHTML')}\n")
-        berkas = folder / "dom_tugas.html"
-        berkas.write_text("\n".join(bagian), encoding="utf-8")
-        return berkas
+                teks = (elemen.text or "").strip()
+                if not teks or any(kata in teks.lower() for kata in TEKS_BUKAN_ERROR):
+                    continue
+                return teks
+
+        # Kalau tidak ada kotak alert, cari kalimat error di dalam modal.
+        isi = ""
+        for wadah in self.driver.find_elements(By.CSS_SELECTOR, ".file-picker"):
+            isi = wadah.text or ""
+        if not isi.strip():
+            isi = teks_halaman(self.driver)
+        for baris in isi.splitlines():
+            rendah = baris.lower()
+            if any(kata in rendah for kata in TEKS_BUKAN_ERROR):
+                continue
+            if any(kata in rendah for kata in PESAN_TOLAK):
+                return baris.strip()
+        return ""

@@ -1,5 +1,4 @@
 # Test case halaman login: TC-LGN-01 dan TC-LGN-02.
-
 from __future__ import annotations
 
 import pytest
@@ -7,7 +6,7 @@ import pytest
 from src.halaman.login import HalamanLogin
 from src.konfigurasi import ambil_benar
 
-# Pesan galat tidak boleh menyebut isian yang salah, hanya menyatakan login gagal.
+# Pesan error tidak boleh menyebut isian yang salah, hanya menyatakan login gagal.
 KATA_ISIAN = ("password", "sandi", "username", "nama pengguna", "akun tidak")
 
 
@@ -29,7 +28,7 @@ def test_tc_lgn_01_login_kredensial_valid(browser, konfigurasi, berkas_sesi):
     if hasil.terblokir:
         pytest.skip(f"Skenario terhalang: {hasil.alasan}")
     assert hasil.berhasil, f"Login seharusnya berhasil: {hasil.pesan or hasil.alasan}"
-    # Sesi ini disimpan untuk skenario unggah, jadi captcha tidak perlu dicentang dua kali.
+    # Sesi ini disimpan untuk skenario upload, jadi captcha tidak perlu dicentang dua kali.
     halaman.simpan_sesi(berkas_sesi)
 
 
@@ -51,4 +50,4 @@ def test_tc_lgn_02_login_kredensial_tidak_valid(browser, konfigurasi):
 
     pesan_rendah = hasil.pesan.lower()
     for kata in KATA_ISIAN:
-        assert kata not in pesan_rendah, f"Pesan galat menyebut isian yang salah: {hasil.pesan}"
+        assert kata not in pesan_rendah, f"Pesan error menyebut isian yang salah: {hasil.pesan}"

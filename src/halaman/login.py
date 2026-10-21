@@ -1,5 +1,4 @@
 # Halaman login: isi kredensial, CAPTCHA, dan pemeriksaan hasil login.
-
 from __future__ import annotations
 
 import json
@@ -13,13 +12,19 @@ from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
     NoSuchWindowException,
+    TimeoutException,
     WebDriverException,
 )
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
-from .dasar import ada_captcha, captcha_terisi, cari_teks, pesan_kuota_captcha, xpath_teks
+from .dasar import (
+    ada_captcha,
+    captcha_terisi,
+    cari_elemen,
+    cari_teks,
+    pesan_kuota_captcha,
+    xpath_teks,
+)
 
 PETUNJUK_GAGAL = (
     "invalid login",
@@ -57,9 +62,10 @@ class HalamanLogin:
         self.driver = driver
         self.konfigurasi = konfigurasi
         self.log = logging.getLogger("uji")
+        self.alasan_terblokir = ""
 
     def _alamat_login(self) -> str:
-        # Beranda hanya punya form di modal, jadi selalu ke halaman login yang menetap.
+        # Beranda hanya punya form di dalam modal, jadi ke halaman login yang menetap.
         url = self.konfigurasi.url
         if urlsplit(url).path in ("", "/"):
             return url.rstrip("/") + "/login/index.php"
@@ -73,84 +79,93 @@ class HalamanLogin:
             if self.driver.window_handles:
                 self.driver.switch_to.window(self.driver.window_handles[-1])
 
-    def _tunggu_tombol(self, batas: int | None = None) -> bool:
-        # Tombol Log in hilang sebentar saat halaman dirender ulang.
-        batas = batas or self.konfigurasi.waktu_tunggu
-        akhir = time.monotonic() + batas
-        while time.monotonic() < akhir:
-            for strategi, selector in TOMBOL_LOGIN:
-                try:
-                    if self.driver.find_element(strategi, selector).is_displayed():
-                        return True
-                except (NoSuchElementException, WebDriverException):
-                    continue
-            time.sleep(0.5)
-        return False
+    def _tunggu_terlihat(self, selector: str, batas: int | None = None):
+        # Elemen dengan id yang sama bisa ada beberapa, yang dipakai yang terlihat.
+        return cari_elemen(
+            self.driver,
+            [(By.ID, selector)],
+            batas=batas or self.konfigurasi.waktu_tunggu,
+            harus_tampil=True,
+        )
 
     def buka(self) -> "HalamanLogin":
         # Cookies dibersihkan supaya setiap percobaan login mulai dari form kosong.
         self.driver.delete_all_cookies()
         self.driver.get(self._alamat_login())
-        # Form siap dipakai kalau username terlihat dan tombol submit sudah ada.
-        WebDriverWait(self.driver, self.konfigurasi.waktu_tunggu).until(
-            EC.visibility_of_element_located((By.ID, "username"))
-        )
-        self._tunggu_tombol()
+        if self._tunggu_terlihat("username") is None:
+            raise TimeoutException("Medan username tidak terlihat di halaman login.")
         return self
 
     def isi_kredensial(self, pengguna: str, sandi: str) -> None:
-        # Menunggu medan siap diklik, tidak sekadar ada di halaman.
-        tunggu = WebDriverWait(self.driver, self.konfigurasi.waktu_tunggu)
-        tunggu.until(EC.element_to_be_clickable((By.ID, "username")))
-        tunggu.until(EC.element_to_be_clickable((By.ID, "password")))
-
-        medan = self.driver.find_element(By.ID, "username")
-        medan.clear()
-        medan.send_keys(pengguna)
-        medan_sandi = self.driver.find_element(By.ID, "password")
-        medan_sandi.clear()
-        medan_sandi.send_keys(sandi)
+        for id_median, nilai in (("username", pengguna), ("password", sandi)):
+            medan = self._tunggu_terlihat(id_median)
+            if medan is None:
+                raise TimeoutException(f"Medan {id_median} tidak terlihat di halaman login.")
+            try:
+                medan.clear()
+                medan.send_keys(nilai)
+            except (ElementNotInteractableException, WebDriverException):
+                # Medan terkunci elemen lain, jadi diisi lewat JS.
+                self.driver.execute_script(
+                    "arguments[0].value = arguments[1];"
+                    "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));",
+                    medan,
+                    nilai,
+                )
 
     def ada_captcha(self) -> bool:
         return ada_captcha(self.driver)
 
     def tunggu_captcha(self) -> bool:
-        # Tunggu centang CAPTCHA, dicentang manusia di mode headed.
         if not self.ada_captcha():
             return True
         if self.konfigurasi.headless:
-            self.log.warning(
-                "Halaman login memakai reCAPTCHA. Jalankan dengan --headed "
-                "lalu cocokkan CAPTCHA manual."
+            # CAPTCHA tanpa interaksi bisa terisi sendiri.
+            if self._tunggu_token(5):
+                return True
+            self.alasan_terblokir = (
+                "halaman login memakai reCAPTCHA, jalankan dengan --headed "
+                "lalu cocokkan CAPTCHA manual"
             )
+            self.log.warning("%s.", self.alasan_terblokir)
             return False
         self.log.info(
             "Cocokkan reCAPTCHA di jendela browser (maks %d detik).",
             self.konfigurasi.waktu_captcha,
         )
-        batas = time.monotonic() + self.konfigurasi.waktu_captcha
+        if self._tunggu_token(self.konfigurasi.waktu_captcha):
+            return True
+        self.alasan_terblokir = "reCAPTCHA tidak dicentang dalam batas waktu"
+        self.log.warning("%s.", self.alasan_terblokir)
+        return False
+
+    def _tunggu_token(self, detik: int) -> bool:
+        batas = time.monotonic() + detik
         while time.monotonic() < batas:
             try:
                 if captcha_terisi(self.driver):
                     return True
             except NoSuchWindowException:
-                self.log.warning("Jendela browser ditutup sebelum CAPTCHA selesai.")
+                self.alasan_terblokir = "jendela browser ditutup sebelum CAPTCHA selesai"
+                self.log.warning("%s.", self.alasan_terblokir)
                 return False
             time.sleep(1)
-        self.log.warning("reCAPTCHA tidak dicentang dalam batas waktu.")
         return False
 
     def kirim(self) -> bool:
-        # Tombol Log in dicari dulu karena bisa hilang sebentar saat halaman dirender ulang.
-        if not self._tunggu_tombol():
+        tombol = cari_elemen(
+            self.driver,
+            TOMBOL_LOGIN,
+            batas=self.konfigurasi.waktu_tunggu,
+            harus_tampil=True,
+        )
+        if tombol is None:
             return False
-        for strategi, selector in TOMBOL_LOGIN:
-            try:
-                self.driver.find_element(strategi, selector).click()
-                return True
-            except (NoSuchElementException, ElementNotInteractableException, WebDriverException):
-                continue
-        return False
+        try:
+            tombol.click()
+            return True
+        except (ElementNotInteractableException, NoSuchElementException, WebDriverException):
+            return False
 
     def sudah_masuk(self) -> bool:
         try:
@@ -162,13 +177,12 @@ class HalamanLogin:
             return bool(self.driver.window_handles)
 
     def coba_login(self, pengguna: str, sandi: str, percobaan_maks: int = 3) -> HasilLogin:
-        # Isi form, tunggu captcha, lalu klik. Ulangi kalau captcha atau tombol hilang.
         for percobaan in range(1, percobaan_maks + 1):
             self.isi_kredensial(pengguna, sandi)
             if not self.tunggu_captcha():
                 return HasilLogin(
                     berhasil=False,
-                    alasan="reCAPTCHA tidak dicentang dalam batas waktu",
+                    alasan=self.alasan_terblokir or "reCAPTCHA tidak terpecahkan",
                     terblokir=True,
                 )
             if not captcha_terisi(self.driver):
@@ -185,7 +199,6 @@ class HalamanLogin:
         return HasilLogin(berhasil=False, alasan="Login gagal setelah beberapa percobaan")
 
     def tunggu_login_manual(self, batas_detik: int | None = None) -> bool:
-        # Yang login adalah operator di jendela browser.
         batas = batas_detik or self.konfigurasi.waktu_login_manual
         self.log.info(
             "Selesaikan login di jendela browser (username, password, dan centang CAPTCHA). "
@@ -204,20 +217,19 @@ class HalamanLogin:
         # Sesi login disimpan supaya skenario berikutnya tidak perlu captcha lagi.
         data = [
             {
-                "name": kuki["name"],
-                "value": kuki["value"],
-                "path": kuki.get("path", "/"),
-                "domain": kuki["domain"],
-                "secure": kuki.get("secure", False),
+                "name": cookie["name"],
+                "value": cookie["value"],
+                "path": cookie.get("path", "/"),
+                "domain": cookie["domain"],
+                "secure": cookie.get("secure", False),
             }
-            for kuki in self.driver.get_cookies()
+            for cookie in self.driver.get_cookies()
         ]
         berkas.parent.mkdir(parents=True, exist_ok=True)
         berkas.write_text(json.dumps(data, indent=1), encoding="utf-8")
         return berkas
 
     def pulihkan_sesi(self, berkas: Path) -> bool:
-        # Cookie sesi dipasang lagi supaya skenario lanjut tanpa login ulang.
         if not berkas.exists():
             return False
         try:
@@ -227,8 +239,8 @@ class HalamanLogin:
         try:
             # Cookie harus dipasang dari halaman dengan domain yang sama.
             self.driver.get(self.konfigurasi.url)
-            for kuki in data:
-                self.driver.add_cookie(kuki)
+            for cookie in data:
+                self.driver.add_cookie(cookie)
             self.driver.get(self._alamat_login())
         except WebDriverException:
             return False
@@ -262,5 +274,5 @@ class HalamanLogin:
         return HasilLogin(
             berhasil=False,
             alasan="Halaman tidak menunjukkan tanda masuk berhasil",
-            pesan=cari_teks(self.driver, PETUNJUK_GAGAL),
+            pesan=pesan,
         )

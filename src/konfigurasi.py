@@ -26,7 +26,8 @@ class Konfigurasi:
     waktu_tunggu: int
     waktu_captcha: int
     waktu_login_manual: int
-    batas_unggah_mb: int
+    waktu_upload: int
+    batas_upload_mb: int
 
     @property
     def punya_kredensial(self) -> bool:
@@ -107,8 +108,9 @@ def bangun_konfigurasi() -> Konfigurasi:
         url_tugas=ambil_teks("SUNAN_URL_TUGAS"),
         folder_berkas=AKAR / "berkas",
         folder_hasil=AKAR / "hasil",
-        waktu_tunggu=ambil_angka("WAKTU_TUNGGU", 15),
+        waktu_tunggu=ambil_angka("WAKTU_TUNGGU", 30),
         waktu_captcha=ambil_angka("WAKTU_CAPTCHA", 120),
         waktu_login_manual=ambil_angka("WAKTU_LOGIN_MANUAL", 300),
-        batas_unggah_mb=ambil_angka("BATAS_UNGGAH_MB", 5),
+        waktu_upload=ambil_angka("WAKTU_UPLOAD", 90),
+        batas_upload_mb=ambil_angka("BATAS_UPLOAD_MB", 5),
     )

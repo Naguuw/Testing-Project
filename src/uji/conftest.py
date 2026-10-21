@@ -1,9 +1,7 @@
-# Fixture bersama: konfigurasi, berkas uji, browser, dan sesi mahasiswa.
-
+# Fixture bersama: Konfigurasi, berkas uji, browser, dan sesi mahasiswa.
 from __future__ import annotations
 
 import logging
-import os
 
 import pytest
 
@@ -12,17 +10,15 @@ from src.browser import profil_browser as buat_profil
 from src.data_uji import siapkan_berkas
 from src.halaman.login import HalamanLogin
 from src.konfigurasi import ambil_benar, bangun_konfigurasi, browser_terpilih
-from src.pelapor import siapkan_log
+from src.pelapor import siapkan_log, simpan_bukti
 
 BROWSER_UJI = browser_terpilih()
 
 
 @pytest.fixture(scope="session", autouse=True)
-def log_uji(konfigurasi):
+def log_uji(konfigurasi, profil_browser):
     # Log skenario dipisah per browser.
-    return siapkan_log(
-        konfigurasi.folder_hasil, f"pengujian_{os.environ.get('BROWSER_UJI', 'chrome')}.log"
-    )
+    return siapkan_log(konfigurasi.folder_hasil, f"pengujian_{profil_browser.nama}.log")
 
 
 @pytest.fixture(scope="session")
@@ -32,7 +28,7 @@ def konfigurasi():
 
 @pytest.fixture(scope="session")
 def berkas(konfigurasi):
-    return siapkan_berkas(konfigurasi.folder_berkas, konfigurasi.batas_unggah_mb)
+    return siapkan_berkas(konfigurasi.folder_berkas, konfigurasi.batas_upload_mb)
 
 
 @pytest.fixture(scope="session", params=BROWSER_UJI, ids=lambda nama: nama)
@@ -50,14 +46,14 @@ def browser(konfigurasi, profil_browser):
 
 
 @pytest.fixture(scope="session")
-def berkas_sesi(konfigurasi):
+def berkas_sesi(konfigurasi, profil_browser):
     # Sesi login disimpan per browser supaya skenario berikutnya tidak perlu captcha.
-    return konfigurasi.folder_hasil / f"sesi_{os.environ.get('BROWSER_UJI', 'chrome')}.json"
+    return konfigurasi.folder_hasil / f"sesi_{profil_browser.nama}.json"
 
 
 @pytest.fixture(scope="session")
 def sesi_mahasiswa(browser, konfigurasi, berkas_sesi):
-    # Login cukup sekali untuk semua skenario unggah.
+    # Login cukup sekali untuk semua skenario upload.
     log = logging.getLogger("uji")
     halaman = HalamanLogin(browser, konfigurasi)
 
@@ -84,5 +80,22 @@ def sesi_mahasiswa(browser, konfigurasi, berkas_sesi):
     if not hasil.berhasil:
         pytest.skip(f"Login gagal, skenario tidak bisa dijalankan: {hasil.pesan or hasil.alasan}")
     halaman.simpan_sesi(berkas_sesi)
-    log.info("Sesi mahasiswa siap dipakai untuk uji unggah berkas.")
+    log.info("Sesi mahasiswa siap dipakai untuk uji upload berkas.")
     return hasil
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item, call):
+    # Bukti diambil tepat saat test gagal, sebelum keadaan browser berubah.
+    hasil = yield
+    laporan = hasil.get_result()
+    setattr(item, "laporan_uji", laporan)
+    if not laporan.failed:
+        return
+    try:
+        driver = item._request.getfixturevalue("browser")
+        konfigurasi = item._request.getfixturevalue("konfigurasi")
+    except Exception:
+        return
+    for berkas in simpan_bukti(driver, konfigurasi.folder_hasil / "bukti", item.name):
+        logging.getLogger("uji").warning("Bukti kegagalan: %s", berkas)

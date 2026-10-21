@@ -1,5 +1,4 @@
 # Pembuatan driver browser: Chrome/Chromium/Brave, Firefox, dan Edge.
-
 from __future__ import annotations
 
 import shutil
@@ -58,6 +57,16 @@ TEMPAT_DRIVER = {
 }
 
 
+# Chrome dan Edge berbasis Chromium, jadi setelan window-nya sama.
+FLAG_CHROMIUM = (
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-dev-shm-usage",
+    "--window-size=1366,768",
+    "--lang=id-ID",
+)
+
+
 @dataclass(frozen=True)
 class ProfilBrowser:
     nama: str
@@ -91,7 +100,7 @@ def cari_driver(nama: str, konf: Konfigurasi) -> str | None:
     return None
 
 
-def _opsi_chrome(konf: Konfigurasi, biner: str | None) -> OpsiChrome:
+def _opsi_kromium(konf: Konfigurasi, biner: str | None) -> OpsiChrome:
     opsi = OpsiChrome()
     if biner:
         opsi.binary_location = biner
@@ -99,11 +108,21 @@ def _opsi_chrome(konf: Konfigurasi, biner: str | None) -> OpsiChrome:
         opsi.add_argument("--headless=new")
     if ambil_benar("NO_SANDBOX", False):
         opsi.add_argument("--no-sandbox")
-    opsi.add_argument("--no-first-run")
-    opsi.add_argument("--no-default-browser-check")
-    opsi.add_argument("--disable-dev-shm-usage")
-    opsi.add_argument("--window-size=1366,768")
-    opsi.add_argument("--lang=id-ID")
+    for flag in FLAG_CHROMIUM:
+        opsi.add_argument(flag)
+    return opsi
+
+
+def _opsi_edge(konf: Konfigurasi, biner: str | None) -> OpsiEdge:
+    opsi = OpsiEdge()
+    if biner:
+        opsi.binary_location = biner
+    if konf.headless:
+        opsi.add_argument("--headless=new")
+    if ambil_benar("NO_SANDBOX", False):
+        opsi.add_argument("--no-sandbox")
+    for flag in FLAG_CHROMIUM:
+        opsi.add_argument(flag)
     return opsi
 
 
@@ -121,21 +140,6 @@ def _opsi_firefox(konf: Konfigurasi, biner: str | None) -> OpsiFirefox:
     return opsi
 
 
-def _opsi_edge(konf: Konfigurasi, biner: str | None) -> OpsiEdge:
-    opsi = OpsiEdge()
-    if biner:
-        opsi.binary_location = biner
-    if konf.headless:
-        opsi.add_argument("--headless=new")
-    if ambil_benar("NO_SANDBOX", False):
-        opsi.add_argument("--no-sandbox")
-    opsi.add_argument("--no-first-run")
-    opsi.add_argument("--disable-dev-shm-usage")
-    opsi.add_argument("--window-size=1366,768")
-    opsi.add_argument("--lang=id-ID")
-    return opsi
-
-
 def buat_driver(konf: Konfigurasi, profil: ProfilBrowser) -> webdriver.RemoteWebDriver:
     # Driver diambil dari lokasi yang tersedia, kalau tidak ada andalkan Selenium Manager.
     if profil.nama == "firefox":
@@ -146,7 +150,7 @@ def buat_driver(konf: Konfigurasi, profil: ProfilBrowser) -> webdriver.RemoteWeb
         return webdriver.Edge(service=layanan, options=_opsi_edge(konf, profil.biner))
 
     layanan = LayananChrome(profil.driver) if profil.driver else LayananChrome()
-    return webdriver.Chrome(service=layanan, options=_opsi_chrome(konf, profil.biner))
+    return webdriver.Chrome(service=layanan, options=_opsi_kromium(konf, profil.biner))
 
 
 def profil_browser(nama: str, konf: Konfigurasi) -> ProfilBrowser:

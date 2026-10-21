@@ -9,7 +9,7 @@ Rencana ini disusun selaras dengan dokumen tersebut: objek uji, ruang lingkup, t
 
 ### 1.1 Latar Belakang
 
-Pengujian perangkat lunak adalah proses untuk memastikan sebuah aplikasi bekerja sesuai spesifikasi dan tidak menimbulkan kesalahan yang merugikan pengguna. Pada aplikasi e-learning, kesalahan validasi input dan kegagalan unggah berkas dapat langsung mengganggu proses belajar (Agustian et al., 2020; Akbar et al., 2025).
+Pengujian perangkat lunak adalah proses untuk memastikan sebuah aplikasi bekerja sesuai spesifikasi dan tidak menimbulkan kesalahan yang merugikan pengguna. Pada aplikasi e-learning, kesalahan validasi input dan kegagalan upload berkas dapat langsung mengganggu proses belajar (Agustian et al., 2020; Akbar et al., 2025).
 
 Sunan UMK (sunan.umk.ac.id) adalah platform e-learning Universitas Muria Kudus yang digunakan mahasiswa untuk mengakses mata kuliah, mengunduh materi, mengumpulkan tugas, dan melihat nilai. Tampilan dan istilah antarmukanya (misalnya *My courses*, *Submitted for grading*, *File picker*) menunjukkan bahwa platform ini kemungkinan berbasis Moodle.
 
@@ -23,7 +23,7 @@ Menyusun rencana serta melaksanakan pengujian fungsional dan non-fungsional pada
 
 - Login mahasiswa dengan kredensial valid dan tidak valid.
 - Akses mata kuliah dan unduh materi.
-- Pengumpulan tugas melalui unggah berkas (validasi format, ukuran, nama berkas, dan kondisi koneksi terputus).
+- Pengumpulan tugas melalui upload berkas (validasi format, ukuran, nama berkas, dan kondisi koneksi terputus).
 - Halaman penilaian (*Grades*).
 - Pengujian non-fungsional: kinerja, kompatibilitas, keamanan dasar, dan keandalan.
 
@@ -42,7 +42,7 @@ LMS Sunan Universitas Muria Kudus, URL `sunan.umk.ac.id`, berupa aplikasi web (k
 
 ### 1.5 Manfaat
 
-Hasil pengujian menjadi masukan perbaikan bagi pengelola Sunan UMK, khususnya pada penanganan error unggah. Bagi mahasiswa penguji, rencana ini melatih penyusunan rencana uji, penurunan test case dengan teknik black-box, dan pemanfaatan otomasi untuk pengujian regresi.
+Hasil pengujian menjadi masukan perbaikan bagi pengelola Sunan UMK, khususnya pada penanganan error upload. Bagi mahasiswa penguji, rencana ini melatih penyusunan rencana uji, penurunan test case dengan teknik black-box, dan pemanfaatan otomasi untuk pengujian regresi.
 
 ---
 
@@ -52,12 +52,12 @@ Hasil pengujian menjadi masukan perbaikan bagi pengelola Sunan UMK, khususnya pa
 |---|---|---|
 | D-01 | Akun mahasiswa valid | Dipakai pada seluruh skenario yang memerlukan sesi masuk |
 | D-02 | Username valid + password salah | Kelas tidak valid untuk login |
-| D-03 | Berkas PDF valid | Berkas materi/unggah normal |
+| D-03 | Berkas PDF valid | Berkas materi/upload normal |
 | D-04 | PDF 5.242.879 byte dan 5.242.880 byte | Nilai batas bawah dan tepat 5 MB (lihat `TC-TGS-02`) |
 | D-05 | Berkas 0 byte (`berkas_0_byte.bin`) | Batas bawah ukuran berkas |
 | D-06 | Berkas tiruan tidak berbahaya berekstensi `.exe` | Format tidak diizinkan |
-| D-07 | Dua berkas PDF dengan nama sama | Deteksi nama ganda saat mengunggah |
-| D-08 | Skenario koneksi terputus | Wi-Fi dimatikan di tengah proses unggah |
+| D-07 | Dua berkas PDF dengan nama sama | Deteksi nama ganda saat mengupload |
+| D-08 | Skenario koneksi terputus | Wi-Fi dimatikan di tengah proses upload |
 
 ---
 
@@ -75,8 +75,8 @@ Kode sumber Sunan UMK tidak dapat diakses oleh penguji. Black-box berfokus pada 
 
 | Teknik | Fungsi | Contoh pada rencana ini |
 |---|---|---|
-| Use Case Testing (UC) | Menurunkan kasus uji dari alur utama dan alur alternatif sebuah use case | `TC-MKL-01` (alur utama: login → pilih mata kuliah → buka topik → unduh materi); `TC-TGS-04` (alur alternatif: koneksi terputus di tengah unggah) |
-| Equivalence Partitioning (EP) | Membagi masukan menjadi kelas valid dan tidak valid, lalu cukup satu nilai wakil dari tiap kelas | Unggah PDF valid (`TC-TGS-01`) vs berkas `.exe` (`TC-TGS-05`); login password salah (`TC-LGN-02`) |
+| Use Case Testing (UC) | Menurunkan kasus uji dari alur utama dan alur alternatif sebuah use case | `TC-MKL-01` (alur utama: login → pilih mata kuliah → buka topik → unduh materi); `TC-TGS-04` (alur alternatif: koneksi terputus di tengah upload) |
+| Equivalence Partitioning (EP) | Membagi masukan menjadi kelas valid dan tidak valid, lalu cukup satu nilai wakil dari tiap kelas | Upload PDF valid (`TC-TGS-01`) vs berkas `.exe` (`TC-TGS-05`); login password salah (`TC-LGN-02`) |
 | Boundary Value Analysis (BVA) | Menguji nilai tepat di batas, satu di bawah, dan satu di atas | `TC-TGS-02` menguji 5.242.879 byte dan 5.242.880 byte (tepat 5 MB); `TC-TGS-03` menguji batas bawah 0 byte |
 
 Ketiga teknik saling melengkapi: EP dan BVA memeriksa validasi masukan pada satu fungsi, sedangkan UC memeriksa rangkaian langkah yang dialami pengguna sebenarnya.
@@ -91,7 +91,7 @@ White-box memerlukan akses ke struktur internal dan kode program, yang tidak ter
 
 ### 4.1 Strategi Pelaksanaan
 
-Urutan pengujian: **smoke test** (login dan dasbor) → **pengujian fungsional** → **pengujian non-fungsional** → **regresi**. Setiap skenario dijalankan secara manual lebih dulu untuk memastikan alurnya benar, kemudian skenario yang stabil (login dan unggah berkas) diotomasikan dengan Selenium agar dapat diulang saat regresi.
+Urutan pengujian: **smoke test** (login dan dasbor) → **pengujian fungsional** → **pengujian non-fungsional** → **regresi**. Setiap skenario dijalankan secara manual lebih dulu untuk memastikan alurnya benar, kemudian skenario yang stabil (login dan upload berkas) diotomasikan dengan Selenium agar dapat diulang saat regresi.
 
 ### 4.2 Tabel Test Case Fungsional
 
@@ -102,12 +102,12 @@ Prioritas: **T** = Tinggi, **S** = Sedang. Metode: **A** = Otomasi (Selenium), *
 | TC-LGN-01 | Login | Login dengan kredensial valid | UC, EP | Buka `sunan.umk.ac.id`, buka halaman login, isi username dan password akun mahasiswa uji yang valid, lalu klik **Masuk**. | Login berhasil dan pengguna diarahkan ke dasbor yang memuat daftar mata kuliahnya. | T | A* |
 | TC-LGN-02 | Login | Login dengan kredensial tidak valid | EP | Isi username valid dengan password salah pada halaman login, lalu klik **Masuk**. | Login ditolak, pesan kesalahan tampil, pengguna tetap di halaman login, dan pesan tidak menyebut isian yang salah. | T | A* |
 | TC-MKL-01 | Mata Kuliah | Membuka mata kuliah dan mengunduh materi | UC | Login sebagai mahasiswa uji, klik satu mata kuliah, buka salah satu topiknya, lalu unduh satu berkas materi. | Halaman mata kuliah dan materi tampil lengkap, berkas terunduh utuh dan dapat dibuka. | T | M |
-| TC-TGS-01 | Tugas | Unggah tugas format PDF valid | EP | Buka tugas pada mata kuliah uji, unggah PDF sebelum tenggat, lalu simpan perubahan. | Berkas diterima, status berubah menjadi terkumpul, dan nama berkas tampil. | T | A |
-| TC-TGS-02 | Tugas | Ukuran di bawah dan tepat pada batas | BVA | Unggah (terpisah) PDF 5.242.879 byte, lalu PDF 5.242.880 byte (tepat 5 MB). | Kedua berkas diterima tanpa pesan error. Batas 5 MB mengacu BR-01 Test Plan dan perlu dicocokkan dengan perilaku sistem. | S | A |
-| TC-TGS-03 | Tugas | Berkas kosong (0 byte) | BVA, EP | Unggah berkas 0 byte (`berkas_0_byte.bin`) melalui *File picker*. | Berkas ditolak dengan pesan yang jelas dan status pengumpulan tidak berubah. | S | A |
-| TC-TGS-04 | Tugas | Koneksi terputus saat unggah | UC | Mulai mengunggah berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. | error unggah tampil, tidak ada pengumpulan setengah jadi yang tersimpan, dan pengguna dapat mengunggah ulang. | T | M |
-| TC-TGS-05 | Tugas | Format tidak diizinkan | EP | Unggah berkas tiruan tidak berbahaya berekstensi `.exe` (tipe diizinkan: doc, docx, pdf, rtf). | Berkas ditolak dengan pesan bahwa format tidak didukung. | T | A |
-| TC-TGS-06 | Tugas | Mengirim dua berkas dengan nama yang sama | UC | Pada tugas di mata kuliah uji, unggah satu PDF lewat *File picker > Upload a file*, lalu unggah PDF lain dengan nama yang sama. | Sistem mendeteksi nama yang sama dan meminta keputusan pengguna (timpa, ganti nama, atau batal), tanpa menimpa berkas secara diam-diam. | S | M |
+| TC-TGS-01 | Tugas | Upload tugas format PDF valid | EP | Pada halaman tugas (action=editsubmission), klik tombol "Add...", pilih PDF pada tab "Upload a file", lalu klik "Upload this file". Berkas diuji terlampir tanpa menekan "Save changes" agar pengumpulan mahasiswa tidak terkirim otomatis. | Berkas diterima tanpa pesan error dan nama berkas tampil di area Files. Pengiriman "Save changes" dan hasilnya "Submitted for grading" diperiksa manual. | T | A |
+| TC-TGS-02 | Tugas | Ukuran di bawah dan tepat pada batas | BVA | Pada File picker, upload (terpisah) PDF 5.242.879 byte, lalu PDF 5.242.880 byte (tepat 5 MB), dan klik "Upload this file" tiap kali. | Kedua berkas diterima tanpa pesan error dan nama berkas tampil di area Files. Batas 5 MB mengacu BR-01 Test Plan, sementara sistem menerima 20 MB. | S | A |
+| TC-TGS-03 | Tugas | Berkas kosong (0 byte) | BVA, EP | Pada File picker, upload berkas 0 byte (`berkas_0_byte.bin`), lalu klik "Upload this file". | Berkas ditolak dengan pesan yang jelas dan status pengumpulan tidak berubah. | S | A |
+| TC-TGS-04 | Tugas | Koneksi terputus saat upload | UC | Mulai mengupload berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. | error upload tampil, tidak ada pengumpulan setengah jadi yang tersimpan, dan pengguna dapat mengupload ulang. | T | M |
+| TC-TGS-05 | Tugas | Format tidak diizinkan | EP | Pada File picker, upload berkas tiruan tidak berbahaya berekstensi `.exe` (tipe diizinkan: doc, docx, pdf, rtf), lalu klik "Upload this file". | Berkas ditolak dengan pesan bahwa format tidak didukung, dan berkas tidak masuk ke area Files. | T | A |
+| TC-TGS-06 | Tugas | Mengirim dua berkas dengan nama yang sama | UC | Pada tugas di mata kuliah uji, upload satu PDF lewat *File picker > Upload a file*, lalu upload PDF lain dengan nama yang sama. | Sistem mendeteksi nama yang sama dan meminta keputusan pengguna (timpa, ganti nama, atau batal), tanpa menimpa berkas secara diam-diam. | S | M |
 | TC-AKS-01 | Penilaian | Mahasiswa membuka halaman penilaian | UC | Login sebagai mahasiswa uji, lalu buka halaman Grades (*Home > Dashboard > Grades*). | Halaman Grades menampilkan nama mahasiswa dan daftar nilai mata kuliah yang diikutinya sendiri. | T | M |
 
 > **Catatan `TC-TGS-02`.** Batas 5 MB mengacu BR-01 Test Plan. Pada eksekusi diperoleh batas aktual sistem 20 MB dan maksimal 1 berkas, sehingga `TC-TGS-02` perlu diuji ulang pada batas 20 MB (lihat §6.2).
@@ -117,9 +117,9 @@ Prioritas: **T** = Tinggi, **S** = Sedang. Metode: **A** = Otomasi (Selenium), *
 | Aspek | Rencana Pengujian | Metode | Hasil Diharapkan |
 |---|---|---|---|
 | Kinerja | Mengukur waktu muat halaman login, dasbor, dan halaman mata kuliah pada koneksi stabil. | Manual + DevTools | Waktu muat tercatat dan tidak terjadi timeout atau elemen hilang |
-| Kompatibilitas | Menjalankan skenario utama (login, unggah tugas) pada Chrome, Firefox, dan Edge. | Manual + Selenium | Tampilan dan alur inti konsisten pada ketiga browser |
+| Kompatibilitas | Menjalankan skenario utama (login, upload tugas) pada Chrome, Firefox, dan Edge. | Manual + Selenium | Tampilan dan alur inti konsisten pada ketiga browser |
 | Keamanan dasar | Memeriksa penggunaan HTTPS, serta sesi yang berakhir setelah logout (halaman tidak dapat dibuka kembali lewat tombol Back). | Manual | Situs memakai HTTPS; halaman terproteksi tidak bisa dibuka ulang setelah keluar |
-| Keandalan | Mengulang skenario login dan unggah beberapa kali; perilaku koneksi terputus (`TC-TGS-04`) juga menjadi bahan evaluasi keandalan. | Manual | Perilaku konsisten pada pengulangan; tidak ada kegagalan yang berbeda antar percobaan |
+| Keandalan | Mengulang skenario login dan upload beberapa kali; perilaku koneksi terputus (`TC-TGS-04`) juga menjadi bahan evaluasi keandalan. | Manual | Perilaku konsisten pada pengulangan; tidak ada kegagalan yang berbeda antar percobaan |
 
 > **Catatan.** Ruang lingkup menyatakan fitur logout tidak diuji sebagai fitur. Butir "sesi yang berakhir setelah logout" pada keamanan dasar hanya memeriksa perilaku sesi (apakah halaman terproteksi dapat dibuka kembali), bukan alur logout itu sendiri. Bila butir ini dihapus dari rencana, selisihnya dicatat terhadap dokumen acuan.
 
@@ -176,7 +176,7 @@ src/
 | Otomasi (Selenium) | Manual | Alasan |
 |---|---|---|
 | `TC-LGN-01`, `TC-LGN-02` | — | Alur login stabil dan tinggi frekuensi regresi |
-| `TC-TGS-01`, `TC-TGS-02`, `TC-TGS-03`, `TC-TGS-05` | — | Validasi unggah berupa masukan tunggal yang nilainya dapat disimulasikan |
+| `TC-TGS-01`, `TC-TGS-02`, `TC-TGS-03`, `TC-TGS-05` | — | Validasi upload berupa masukan tunggal yang nilainya dapat disimulasikan |
 | — | `TC-MKL-01` | Unduhan berkas dan tampilan materi dinilai manual |
 | — | `TC-TGS-04` | Gangguan fisik (Wi-Fi diputus) sulit ditiru skrip |
 | — | `TC-TGS-06` | Penanganan dialog nama berkas sama bergantung pada *file picker* sistem |
@@ -208,16 +208,16 @@ Dari 10 test case, 9 lulus dan 1 gagal (`TC-TGS-04`), sehingga tingkat keberhasi
 
 ### 6.2 Temuan
 
-- **`TC-TGS-04` (gagal):** saat koneksi dimatikan, *File picker* tidak memuat dan tidak menampilkan pesan error yang jelas. Dugaan penyebab: kegagalan permintaan jaringan pada antarmuka unggah belum ditangani (tanpa batas waktu dan pesan cadangan).
+- **`TC-TGS-04` (gagal):** saat koneksi dimatikan, *File picker* tidak memuat dan tidak menampilkan pesan error yang jelas. Dugaan penyebab: kegagalan permintaan jaringan pada antarmuka upload belum ditangani (tanpa batas waktu dan pesan cadangan).
 - **Batas ukuran berkas:** sistem membatasi 20 MB dan maksimal 1 berkas, berbeda dari 5 MB pada BR-01 Test Plan. `TC-TGS-02` perlu diuji ulang terhadap batas 20 MB.
 - **Pesan error:** pesan penolakan berkas kosong dan format tidak diizinkan berbahasa Inggris, dan pesan format tidak menyebut tipe berkas yang diizinkan.
 - **Nilai positif (`TC-TGS-06`):** dua berkas bernama sama ditangani dengan dialog *File exists* (Overwrite, Rename, Cancel), sehingga berkas tidak tertimpa tanpa konfirmasi.
 
 ### 6.3 Pembahasan
 
-Fitur yang bersifat alur sederhana (login, membuka mata kuliah, melihat nilai) seluruhnya lulus. Kegagalan hanya muncul pada skenario alternatif, yaitu koneksi terputus, yang diturunkan dari teknik Use Case Testing. Ini menunjukkan bahwa pengujian yang hanya memeriksa masukan valid dan tidak valid (EP) belum cukup, karena kelemahan penanganan error jaringan baru terlihat saat alur yang tidak ideal dicoba. Dampaknya nyata bagi mahasiswa: unggah yang gagal tanpa pesan jelas dapat membuat mahasiswa mengira tugasnya sudah terkirim, terutama menjelang tenggat.
+Fitur yang bersifat alur sederhana (login, membuka mata kuliah, melihat nilai) seluruhnya lulus. Kegagalan hanya muncul pada skenario alternatif, yaitu koneksi terputus, yang diturunkan dari teknik Use Case Testing. Ini menunjukkan bahwa pengujian yang hanya memeriksa masukan valid dan tidak valid (EP) belum cukup, karena kelemahan penanganan error jaringan baru terlihat saat alur yang tidak ideal dicoba. Dampaknya nyata bagi mahasiswa: upload yang gagal tanpa pesan jelas dapat membuat mahasiswa mengira tugasnya sudah terkirim, terutama menjelang tenggat.
 
-Pada fitur unggah, validasi masukan sudah baik: berkas kosong, format tidak diizinkan, dan nama ganda semuanya ditangani sistem. Kekurangannya ada pada kejelasan pesan (berbahasa Inggris dan tidak menyebut tipe berkas yang diizinkan) serta ketidakselarasan batas ukuran berkas dengan dokumen kebutuhan (20 MB pada sistem, 5 MB pada BR-01). Ketidakselarasan ini bukan error sistem, tetapi menandakan dokumen kebutuhan perlu diperbarui, sehingga pengujian juga berfungsi sebagai pemeriksa konsistensi spesifikasi.
+Pada fitur upload, validasi masukan sudah baik: berkas kosong, format tidak diizinkan, dan nama ganda semuanya ditangani sistem. Kekurangannya ada pada kejelasan pesan (berbahasa Inggris dan tidak menyebut tipe berkas yang diizinkan) serta ketidakselarasan batas ukuran berkas dengan dokumen kebutuhan (20 MB pada sistem, 5 MB pada BR-01). Ketidakselarasan ini bukan error sistem, tetapi menandakan dokumen kebutuhan perlu diperbarui, sehingga pengujian juga berfungsi sebagai pemeriksa konsistensi spesifikasi.
 
 Perlu dicatat bahwa jumlah test case pada paper ini hanya 10 dan dijalankan pada satu browser, sehingga hasilnya belum dapat digeneralisasi untuk seluruh fitur dan lingkungan.
 
@@ -231,7 +231,7 @@ Pengujian black-box dengan teknik UC, EP, dan BVA terhadap Sunan UMK menghasilka
 
 ### 7.2 Saran
 
-- Menambahkan pesan error dan batas waktu pada antarmuka unggah.
+- Menambahkan pesan error dan batas waktu pada antarmuka upload.
 - Menyeragamkan bahasa pesan dan menyebut tipe berkas yang diizinkan.
 - Menyesuaikan batas ukuran berkas pada BR-01 dengan perilaku sistem (20 MB).
 - Melanjutkan pengujian non-fungsional (kinerja, kompatibilitas browser, keamanan dasar, keandalan).
@@ -239,7 +239,7 @@ Pengujian black-box dengan teknik UC, EP, dan BVA terhadap Sunan UMK menghasilka
 
 ---
 
-## Lampiran A — Traceability ke Dokumen Acuan
+## Lampiran A: Traceability ke Dokumen Acuan
 
 | Bagian dokumen acuan | Bagian rencana ini |
 |---|---|
@@ -253,7 +253,7 @@ Pengujian black-box dengan teknik UC, EP, dan BVA terhadap Sunan UMK menghasilka
 
 ---
 
-## Lampiran B — Kandidat Pengujian Lanjutan (di luar cakupan paper)
+## Lampiran B: Kandidat Pengujian Lanjutan (di luar cakupan paper)
 
 Test case di bawah ini **tidak termasuk** 10 test case pada dokumen acuan dan tidak memengaruhi hasil 90% di atas. Disimpan sebagai bahan pengembangan lanjutan bila cakupan pengujian diperluas.
 
@@ -267,10 +267,10 @@ Test case di bawah ini **tidak termasuk** 10 test case pada dokumen acuan dan ti
 | EXT-06 | Sesi | Akses URL dashboard tanpa login | Diarahkan ke halaman login |
 | EXT-07 | Sesi | Tombol Back setelah keluar | Halaman terproteksi tidak dapat dibuka |
 | EXT-08 | Sesi | Timeout setelah idle | Diminta login ulang |
-| EXT-09 | Tugas | Unggah setelah tenggat | Ditolak atau ditandai terlambat |
+| EXT-09 | Tugas | Upload setelah tenggat | Ditolak atau ditandai terlambat |
 | EXT-10 | Tugas | Kirim ulang / ganti berkas terkumpul | Sesuai kebijakan sistem |
-| EXT-11 | Tugas | Unggah pada batas aktual 20 MB | Uji ulang `TC-TGS-02` pada batas sistem |
-| EXT-12 | Tugas | Unggah lebih dari 1 berkas | Sistem membatasi maksimal 1 berkas |
+| EXT-11 | Tugas | Upload pada batas aktual 20 MB | Uji ulang `TC-TGS-02` pada batas sistem |
+| EXT-12 | Tugas | Upload lebih dari 1 berkas | Sistem membatasi maksimal 1 berkas |
 | EXT-13 | Materi | Tautan materi rusak (404) | Tidak ada link mati |
 | EXT-14 | Keamanan | Atribut cookie sesi Secure/HttpOnly | Pemeriksaan tambahan, perlu izin |
 | EXT-15 | Keamanan | Pesan error membocorkan detail teknis | Pemeriksaan tambahan, perlu izin |

@@ -31,10 +31,10 @@ DAFTAR_TEST_CASE = [
     ("TC-LGN-01", "Login dengan kredensial valid", "otomatis"),
     ("TC-LGN-02", "Login dengan kredensial tidak valid", "otomatis"),
     ("TC-MKL-01", "Membuka mata kuliah dan mengunduh materi", "manual"),
-    ("TC-TGS-01", "Unggah tugas format PDF valid", "otomatis"),
+    ("TC-TGS-01", "Upload tugas format PDF valid", "otomatis"),
     ("TC-TGS-02", "Ukuran di bawah dan tepat pada batas", "otomatis"),
     ("TC-TGS-03", "Berkas kosong (0 byte)", "otomatis"),
-    ("TC-TGS-04", "Koneksi terputus saat unggah", "manual"),
+    ("TC-TGS-04", "Koneksi terputus saat upload", "manual"),
     ("TC-TGS-05", "Format tidak diizinkan", "otomatis"),
     ("TC-TGS-06", "Mengirim dua berkas dengan nama yang sama", "manual"),
     ("TC-AKS-01", "Mahasiswa membuka halaman penilaian", "manual"),
@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--url", help="Alamat situs yang diuji")
     parser.add_argument("--pengguna", help="Nama pengguna akun uji")
     parser.add_argument("--sandi", help="Kata sandi akun uji")
-    parser.add_argument("--url-tugas", help="Alamat halaman tugas yang dipakai uji unggah")
+    parser.add_argument("--url-tugas", help="Alamat halaman tugas yang dipakai uji upload")
     return parser.parse_args()
 
 
@@ -102,12 +102,12 @@ def kunci_pilihan(daftar_id: str) -> str:
 
 def pisahkan_pilihan(daftar_id: str) -> tuple[list[str], list[str]]:
     # Memisahkan ID pilihan menjadi yang dikerjakan otomatis dan yang manual.
+    cara = {kode: metode for kode, _, metode in DAFTAR_TEST_CASE}
     otomatis, manual = [], []
     for id_uji in (bagian.strip().upper() for bagian in daftar_id.split(",")):
         if not id_uji:
             continue
-        cara = dict((kode, metode) for kode, _, metode in DAFTAR_TEST_CASE).get(id_uji)
-        if cara == "manual":
+        if cara.get(id_uji) == "manual":
             manual.append(id_uji)
         else:
             otomatis.append(id_uji)
@@ -172,7 +172,7 @@ def main() -> int:
 
     konfigurasi = bangun_konfigurasi()
     logger = siapkan_log(konfigurasi.folder_hasil, ke_konsol=False)
-    siapkan_berkas(konfigurasi.folder_berkas, konfigurasi.batas_unggah_mb)
+    siapkan_berkas(konfigurasi.folder_berkas, konfigurasi.batas_upload_mb)
 
     if args.buat_berkas:
         logger.info("Berkas uji siap di %s", konfigurasi.folder_berkas)
@@ -185,7 +185,7 @@ def main() -> int:
         print("        Isi SUNAN_PENGGUNA dan SUNAN_SANDI di berkas .env,")
         print("        atau jalankan dengan --login-manual.")
     if not konfigurasi.url_tugas:
-        print("Catatan: SUNAN_URL_TUGAS belum diisi, uji unggah berkas tidak bisa jalan.")
+        print("Catatan: SUNAN_URL_TUGAS belum diisi, uji upload berkas tidak bisa jalan.")
     print()
 
     otomatis, manual = ([], [])
@@ -211,7 +211,7 @@ def main() -> int:
         kode_keluar = kode_keluar or kode
 
         junit = konfigurasi.folder_hasil / f"junit_{nama_browser}.xml"
-        jumlah = baca_hasil(junit)
+        jumlah, _ = baca_hasil(junit)
         tulis_laporan(junit, konfigurasi.folder_hasil, konfigurasi, nama_browser, biner)
         rekap.append((nama_browser, jumlah))
         print(

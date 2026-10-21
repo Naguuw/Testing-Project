@@ -1,5 +1,4 @@
 # Skenario uji manual yang tidak dikerjakan Selenium.
-
 from __future__ import annotations
 
 SKENARIO_MANUAL = [
@@ -12,14 +11,20 @@ SKENARIO_MANUAL = [
     (
         "TC-TGS-04",
         "Tugas",
-        "Mulai mengunggah berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. "
+        "Mulai mengupload berkas, matikan Wi-Fi di tengah proses, lalu sambungkan kembali. "
         "Perhatikan pesan error dan apakah pengumpulan setengah jadi tersimpan.",
     ),
     (
         "TC-TGS-06",
         "Tugas",
-        "Unggah satu PDF lewat File picker > Upload a file, lalu unggah PDF lain dengan nama sama. "
+        "Upload satu PDF lewat File picker > Upload a file, lalu upload PDF lain dengan nama sama. "
         "Periksa dialog File exists (Overwrite, Rename, Cancel).",
+    ),
+    (
+        "TC-TGS-01 (lanjutan)",
+        "Tugas",
+        "Lanjutkan dari berkas yang sudah terlampir: klik Save changes, lalu periksa "
+        "halaman Assignment. Submission status harus berbunyi Submitted for grading.",
     ),
     (
         "TC-AKS-01",
@@ -30,7 +35,7 @@ SKENARIO_MANUAL = [
     (
         "NFR-01",
         "Kompatibilitas",
-        "Ulangi skenario login dan unggah tugas pada Chrome, Firefox, dan Edge.",
+        "Ulangi skenario login dan upload tugas pada Chrome, Firefox, dan Edge.",
     ),
     (
         "NFR-02",
@@ -45,7 +50,7 @@ SKENARIO_MANUAL = [
     (
         "NFR-04",
         "Keandalan",
-        "Ulangi skenario login dan unggah beberapa kali, bandingkan hasilnya.",
+        "Ulangi skenario login dan upload beberapa kali, bandingkan hasilnya.",
     ),
 ]
 

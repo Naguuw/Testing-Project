@@ -1,6 +1,6 @@
-# Pencarian elemen dengan beberapa selector kandidat.
-
 from __future__ import annotations
+
+import time
 
 from selenium.common.exceptions import (
     NoSuchElementException,
@@ -16,21 +16,32 @@ PESAN_CAPTCHA_KUOTA = ("quota", "too many requests", "recaptcha error", "unusual
 
 
 class ElemenTidakDitemukan(Exception):
-    # Dilempar saat seluruh selector kandidat gagal cocok.
+    # Dilempar pas semua selector kandidat gagal dicocokkan.
     pass
 
 
-def cari_pertama(driver, kandidat: list[tuple[str, str]], batas: int = 10):
-    dicoba = []
+def cari_elemen(
+    driver,
+    kandidat: list[tuple[str, str]],
+    batas: int = 10,
+    harus_tampil: bool = False,
+):
+    # Batas waktu dibagi rata ke semua kandidat supaya kandidat pertama tidak
+    # menghabiskan waktu dan kandidat lain tidak kesempatannya.
+    akhir = time.monotonic() + batas
+    per_kandidat = max(batas / max(len(kandidat), 1), 0.5)
     for strategi, selector in kandidat:
-        dicoba.append(f"{strategi}={selector}")
+        sisa = akhir - time.monotonic()
+        if sisa <= 0:
+            break
         try:
-            return WebDriverWait(driver, batas).until(
-                EC.presence_of_element_located((strategi, selector))
-            )
+            tunggu = WebDriverWait(driver, max(min(per_kandidat, sisa), 0.5))
+            if harus_tampil:
+                return tunggu.until(EC.visibility_of_element_located((strategi, selector)))
+            return tunggu.until(EC.presence_of_element_located((strategi, selector)))
         except (TimeoutException, NoSuchElementException):
             continue
-    raise ElemenTidakDitemukan("Elemen tidak ditemukan. Yang dicoba: " + ", ".join(dicoba))
+    return None
 
 
 def teks_halaman(driver) -> str:
@@ -38,10 +49,8 @@ def teks_halaman(driver) -> str:
 
 
 def cari_teks(driver, frasa: tuple[str, ...]) -> str:
-    isi = teks_halaman(driver)
-    for baris in isi.splitlines():
-        rendah = baris.lower()
-        if any(f.lower() in rendah for f in frasa):
+    for baris in teks_halaman(driver).splitlines():
+        if any(kata.lower() in baris.lower() for kata in frasa):
             return baris.strip()
     return ""
 
@@ -51,7 +60,7 @@ def ada_captcha(driver) -> bool:
 
 
 def captcha_terisi(driver) -> bool:
-    # Dijawab dua-duanya: medan respons terisi atau centang di iframe sudah diceklis.
+    # Centang dianggap terisi lewat medan respons atau lewat checkbox di iframe.
     for medan in driver.find_elements(By.ID, "g-recaptcha-response"):
         if (medan.get_attribute("value") or "").strip():
             return True
@@ -59,7 +68,7 @@ def captcha_terisi(driver) -> bool:
 
 
 def _anchor_tercentang(driver) -> bool:
-    # Centang reCAPTCHA ada di dalam iframe, jadi harus dibaca dari dalamnya.
+    # Checkbox reCAPTCHA ada di dalam iframe. harus dibaca dari dalam.
     for bingkai in driver.find_elements(By.CSS_SELECTOR, "iframe[src*='recaptcha/api2/anchor']"):
         try:
             driver.switch_to.frame(bingkai)
